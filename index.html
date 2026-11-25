@@ -1,0 +1,2636 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Admin Pantauan Suhu Pendingin UPTD RPH dan Pasar Hewan</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Firebase SDK (Compatibility Version) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+    <style>
+        html, body {
+            touch-action: manipulation;
+            -webkit-text-size-adjust: 100%;
+        }
+        body {
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        @media (max-width: 768px) {
+            input, select, textarea {
+                font-size: 16px !important;
+            }
+        }
+        .sidebar-link-active {
+            background-color: #0284c7;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+        }
+        .table-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        ::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+
+        /* ==================== CETAK PDF RAPI TANPA TERPOTONG ==================== */
+        #print-area {
+            display: none;
+        }
+        @page {
+            size: A4 portrait;
+            margin: 10mm;
+        }
+        @media print {
+            html, body {
+                background: #ffffff !important;
+                color: #0f172a !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                height: auto !important;
+                min-height: 0 !important;
+                overflow: visible !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            body > *:not(#print-area) {
+                display: none !important;
+            }
+            #print-area {
+                display: block !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .print-header {
+                border-bottom: 2px solid #0284c7;
+                padding-bottom: 10px;
+                margin-bottom: 12px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 12px;
+            }
+            .print-info-box {
+                background-color: #f8fafc !important;
+                border: 1px solid #cbd5e1;
+                border-radius: 8px;
+                padding: 10px 12px;
+                margin-bottom: 12px;
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+                font-size: 8.5pt;
+            }
+            .print-cards-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+                margin-bottom: 12px;
+            }
+            .print-card {
+                border-radius: 8px;
+                padding: 10px;
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .print-table {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+                font-size: 8.5pt;
+                margin-bottom: 14px;
+            }
+            .print-table thead {
+                display: table-header-group;
+            }
+            .print-table tr {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .print-table th,
+            .print-table td {
+                border: 1px solid #94a3b8;
+                padding: 6px 8px;
+                vertical-align: middle;
+                word-wrap: break-word;
+                overflow-wrap: anywhere;
+            }
+            .print-table th {
+                background-color: #0369a1 !important;
+                color: #ffffff !important;
+                font-weight: 700;
+                text-transform: uppercase;
+                font-size: 7.5pt;
+                letter-spacing: 0.03em;
+            }
+            .print-table tbody tr:nth-child(even) {
+                background-color: #f8fafc !important;
+            }
+            .print-charts-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            .print-chart-box {
+                border: 1px solid #cbd5e1;
+                border-radius: 8px;
+                padding: 8px;
+                background: #ffffff !important;
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .print-chart-box svg {
+                width: 100% !important;
+                min-width: 0 !important;
+                height: auto !important;
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col w-full">
+
+    <!-- OVERLAY SIDEBAR (BERLAKU DI LAPTOP & MOBILE) -->
+    <div id="sidebar-overlay" onclick="setSidebar(false)" class="fixed inset-0 bg-black/60 backdrop-blur-[1px] z-40 hidden transition-opacity"></div>
+
+    <!-- SIDEBAR NAVIGASI (TERTUTUP DEFAULT, HANYA TERBUKA SAAT DIKETUK) -->
+    <aside id="app-sidebar"
+        class="fixed inset-y-0 left-0 z-50 w-72 shrink-0 bg-slate-900 text-slate-200 flex flex-col justify-between shadow-2xl transition-transform duration-300 ease-in-out -translate-x-full">
+        
+        <div class="flex flex-col flex-1 overflow-y-auto">
+            <!-- Header Sidebar dengan Logo + Tombol Tutup -->
+            <div class="px-4 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <img id="sidebar-logo"
+                        src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%230284c7'/%3E%3Cstop offset='100%25' stop-color='%2306b6d4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Cpath d='M32 10v44M13 21l38 22M51 21L13 43' stroke='%23ffffff' stroke-width='3.5' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%230f172a' stroke='%23ffffff' stroke-width='3'/%3E%3C/svg%3E"
+                        alt="Logo UPTD RPH dan Pasar Hewan"
+                        class="w-10 h-10 rounded-xl object-cover border border-sky-400/40 bg-white shrink-0">
+                    <div class="min-w-0">
+                        <p class="text-[11px] font-black tracking-wide text-white uppercase leading-snug">Admin Pantauan Suhu</p>
+                        <p class="text-[10px] text-cyan-300 font-semibold leading-snug">UPTD RPH &amp; Pasar Hewan</p>
+                    </div>
+                </div>
+                <button type="button" onclick="setSidebar(false)" title="Tutup Menu"
+                    class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Info Status Singkat di Sidebar -->
+            <div class="px-4 py-3 border-b border-slate-800/80 bg-slate-900/60 flex items-center justify-between text-[11px]">
+                <span class="text-slate-400 font-medium">Status Sinkronisasi</span>
+                <span id="badge-koneksi" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                    <i class="fa-solid fa-circle text-[7px] mr-1 animate-pulse"></i>Aktif
+                </span>
+            </div>
+
+            <!-- MENU NAVIGASI -->
+            <nav class="p-3 space-y-1.5 flex-1">
+                <p class="px-3 pt-1 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Menu Navigasi</p>
+
+                <button type="button" onclick="pilihMenu('dashboard')" data-menu="dashboard"
+                    class="sidebar-btn sidebar-link-active w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-left transition-all cursor-pointer">
+                    <i class="fa-solid fa-gauge-high w-4 text-center"></i>
+                    <span>Dashboard</span>
+                </button>
+
+                <button type="button" onclick="pilihMenu('laporan-petugas')" data-menu="laporan-petugas"
+                    class="sidebar-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white text-left transition-all cursor-pointer">
+                    <i class="fa-solid fa-clipboard-list w-4 text-center text-cyan-400"></i>
+                    <span>Laporan Petugas</span>
+                </button>
+
+                <button type="button" onclick="pilihMenu('petugas-dan-unit')" data-menu="petugas-dan-unit"
+                    class="sidebar-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white text-left transition-all cursor-pointer">
+                    <i class="fa-solid fa-users-gear w-4 text-center text-emerald-400"></i>
+                    <span>Petugas dan Unit</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Footer Sidebar -->
+        <div class="p-4 bg-slate-950 border-t border-slate-800">
+            <p class="text-[10px] text-center text-slate-500">UPTD RPH dan Pasar Hewan</p>
+        </div>
+    </aside>
+
+    <!-- AREA KONTEN UTAMA (LEBAR PENUH UJUNG KIRI KE UJUNG KANAN) -->
+    <div class="flex-1 flex flex-col min-w-0 w-full">
+
+        <!-- HEADER ATAS -->
+        <header class="bg-gradient-to-r from-sky-900 via-sky-800 to-cyan-800 text-white sticky top-0 z-30 shadow-md w-full">
+            <div class="px-3 sm:px-5 py-3 flex items-center gap-3 w-full">
+                <button type="button" onclick="toggleSidebar()" title="Buka / Tutup Menu"
+                    class="w-10 h-10 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 flex items-center justify-center transition-colors shrink-0 cursor-pointer">
+                    <i class="fa-solid fa-bars text-base"></i>
+                </button>
+
+                <div class="min-w-0 flex-1">
+                    <h1 id="topbar-title" class="text-[13px] sm:text-sm md:text-base font-black tracking-tight uppercase leading-snug break-words whitespace-normal">
+                        Admin Pantauan Suhu Pendingin UPTD RPH dan Pasar Hewan
+                    </h1>
+                </div>
+            </div>
+        </header>
+
+        <!-- NOTIFIKASI TOAST -->
+        <div id="toast-notif" class="fixed bottom-4 right-4 z-[80] hidden max-w-xs bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-xl border border-slate-700 flex items-center gap-2.5">
+            <i class="fa-solid fa-circle-check text-emerald-400"></i>
+            <span id="toast-notif-text">Berhasil disimpan</span>
+        </div>
+
+        <!-- KONTEN PER MENU (TANPA max-w-7xl mx-auto AGAR FULL DARI UJUNG KIRI KE UJUNG KANAN) -->
+        <main class="flex-1 w-full px-2 sm:px-4 lg:px-5 py-4 sm:py-5 space-y-5">
+
+            <!-- ==================== 1. MENU DASHBOARD ==================== -->
+            <div id="sec-dashboard" class="menu-section space-y-5 w-full">
+
+                <!-- BAR KONTROL DASHBOARD RESPONSIF -->
+                <section class="w-full bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-3.5">
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0 border border-sky-200">
+                                <i class="fa-solid fa-gauge-high text-base"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <h2 class="text-sm sm:text-base font-bold text-slate-800">Dashboard Pantauan Suhu &amp; Grafik</h2>
+                                <p class="text-[11px] text-slate-500">Menampilkan unit terdaftar, suhu terendah &amp; tertinggi, serta grafik tiap pendingin</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto">
+                            <!-- Dropdown Pantauan Suhu & Grafik -->
+                            <select id="dash-dropdown-tampilan" onchange="terapkanDropdownDashboard()"
+                                class="col-span-2 sm:col-span-1 text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 font-bold text-slate-700 focus:outline-none focus:border-sky-500 cursor-pointer">
+                                <option value="semua">Semua (Pantauan Suhu &amp; Grafik)</option>
+                                <option value="pantauan">Pantauan Suhu</option>
+                                <option value="grafik">Grafik</option>
+                            </select>
+
+                            <!-- Dropdown Unit Terdaftar -->
+                            <select id="dash-dropdown-unit" onchange="renderDashboard()"
+                                class="col-span-2 sm:col-span-1 text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 font-bold text-slate-700 focus:outline-none focus:border-sky-500 cursor-pointer">
+                                <option value="">Semua Unit Terdaftar</option>
+                            </select>
+
+                            <!-- Tombol Ikon Kalender Detail Responsif -->
+                            <button type="button" id="btn-dash-kalender" onclick="bukaModalKalender()" title="Buka Kalender Suhu Terendah & Tertinggi"
+                                class="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shrink-0">
+                                <i class="fa-solid fa-calendar-days text-sm"></i>
+                                <span>Kalender</span>
+                            </button>
+
+                            <!-- Tombol Cetak PDF Dashboard -->
+                            <button type="button" onclick="cetakPDFMenu('dashboard')" title="Cetak PDF Dashboard"
+                                class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0">
+                                <i class="fa-solid fa-file-pdf text-rose-400"></i>
+                                <span>PDF</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- BAGIAN 1: PANTAUAN SUHU (HANYA UNIT TERDAFTAR, KOTAK WARNA BERBEDA TIAP UNIT) -->
+                <section id="dash-panel-pantauan" class="w-full bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <button type="button" onclick="toggleAccordionDashboard('pantauan')"
+                        class="w-full px-4 sm:px-5 py-4 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between gap-3 text-left cursor-pointer hover:bg-slate-100/70 transition-colors">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-8 h-8 rounded-lg bg-sky-100 text-sky-600 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-temperature-half"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <h3 class="text-sm sm:text-base font-bold text-slate-800">Pantauan Suhu Unit Terdaftar</h3>
+                                <p class="text-[11px] text-slate-500 truncate">Menampilkan suhu terakhir diinput, suhu terendah, dan suhu tertinggi</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span id="dash-unit-count" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
+                                0 Pendingin
+                            </span>
+                            <i id="icon-acc-pantauan" class="fa-solid fa-chevron-down text-xs text-slate-500 transition-transform duration-200"></i>
+                        </div>
+                    </button>
+
+                    <div id="body-acc-pantauan" class="p-4 sm:p-5 space-y-5">
+                        <!-- Grid Kotak Warna Berbeda Setiap Unit -->
+                        <div id="grid-pantauan-suhu" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            <div class="col-span-full py-8 text-center text-xs text-slate-400">Memuat data pantauan suhu...</div>
+                        </div>
+
+                        <!-- Keterangan Suhu Terendah & Suhu Tertinggi pada Unit dan Jenis Pendingin -->
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+                            <div class="flex items-center gap-2 border-b border-slate-200 pb-2.5">
+                                <i class="fa-solid fa-circle-info text-sky-600 text-sm"></i>
+                                <h4 class="text-xs sm:text-sm font-bold text-slate-800">
+                                    Keterangan Suhu Terendah &amp; Suhu Tertinggi per Unit dan Jenis Pendingin
+                                </h4>
+                            </div>
+                            <div id="summary-minmax-unit" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <p class="text-xs text-slate-400">Memuat keterangan suhu...</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- BAGIAN 2: GRAFIK TIAP JENIS PENDINGIN -->
+                <section id="dash-panel-grafik" class="w-full bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <button type="button" onclick="toggleAccordionDashboard('grafik')"
+                        class="w-full px-4 sm:px-5 py-4 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between gap-3 text-left cursor-pointer hover:bg-slate-100/70 transition-colors">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-600 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-chart-line"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <h3 class="text-sm sm:text-base font-bold text-slate-800">Grafik Suhu Tiap Jenis Pendingin</h3>
+                                <p id="chart-subtitle" class="text-[11px] text-slate-500 truncate">Menampilkan grafik terpisah untuk setiap jenis pendingin terdaftar</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span id="dash-chart-count" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200">
+                                0 Grafik
+                            </span>
+                            <i id="icon-acc-grafik" class="fa-solid fa-chevron-down text-xs text-slate-500 transition-transform duration-200"></i>
+                        </div>
+                    </button>
+
+                    <div id="body-acc-grafik" class="p-4 sm:p-5">
+                        <div id="container-grafik-suhu" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div class="col-span-full py-10 text-center text-xs text-slate-400">Memuat grafik suhu...</div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ==================== 2. MENU LAPORAN PETUGAS ==================== -->
+            <div id="sec-laporan-petugas" class="menu-section hidden space-y-5 w-full">
+                <section class="w-full bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="px-3.5 sm:px-5 py-4 border-b border-slate-100 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-700 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-clipboard-list"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-sm sm:text-base font-bold text-slate-800">Laporan Petugas Pantauan Suhu</h2>
+                                <p id="log-count-info" class="text-[11px] text-slate-500">0 laporan suhu tersimpan</p>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                            <select id="filter-log-unit" onchange="resetPageDanRenderLog()"
+                                class="flex-1 sm:flex-initial text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-sky-500 font-semibold">
+                                <option value="">Semua Unit</option>
+                            </select>
+                            <input type="date" id="filter-log-tanggal" onchange="resetPageDanRenderLog()" title="Filter Tanggal"
+                                class="flex-1 sm:flex-initial text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-sky-500 font-semibold">
+                            <input type="text" id="cari-log" oninput="resetPageDanRenderLog()" placeholder="Cari petugas / unit / pendingin..."
+                                class="w-full sm:w-44 text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500">
+                            <button type="button" onclick="exportCSVLogSuhu()"
+                                class="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer">
+                                <i class="fa-solid fa-file-csv"></i>
+                                <span>CSV</span>
+                            </button>
+                            <button type="button" onclick="cetakPDFMenu('laporan-petugas')"
+                                class="flex-1 sm:flex-initial bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer">
+                                <i class="fa-solid fa-file-pdf text-rose-400"></i>
+                                <span>PDF</span>
+                            </button>
+                            <button type="button" id="btn-hapus-semua-log" onclick="hapusSemuaLog()"
+                                class="flex-1 sm:flex-initial bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer">
+                                <i class="fa-solid fa-trash-can"></i>
+                                <span>Hapus Semua</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-2 sm:p-4 w-full">
+                        <div class="border border-slate-300 rounded-xl overflow-hidden w-full">
+                            <table class="w-full table-fixed text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-sky-800 text-white text-[9px] sm:text-[11px] font-bold uppercase tracking-tight sm:tracking-wider">
+                                        <th class="border border-slate-400 w-[7%] px-1 sm:px-2.5 py-2 sm:py-3 text-center">No</th>
+                                        <th class="border border-slate-400 w-[17%] px-1 sm:px-2.5 py-2 sm:py-3 leading-tight">Waktu Pantau</th>
+                                        <th class="border border-slate-400 w-[17%] px-1 sm:px-2.5 py-2 sm:py-3 leading-tight">Nama Petugas</th>
+                                        <th class="border border-slate-400 w-[25%] px-1.5 sm:px-3 py-2 sm:py-3 leading-tight">Unit &amp; Jenis Pendingin</th>
+                                        <th class="border border-slate-400 w-[12%] px-1 sm:px-2 py-2 sm:py-3 text-center">Suhu</th>
+                                        <th class="border border-slate-400 w-[12%] px-1 sm:px-2 py-2 sm:py-3 text-center">Foto</th>
+                                        <th class="border border-slate-400 w-[10%] px-1 sm:px-2 py-2 sm:py-3 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-log-suhu" class="text-[10px] sm:text-xs">
+                                    <tr>
+                                        <td colspan="7" class="border border-slate-300 text-center py-8 text-slate-400">Memuat laporan petugas...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div id="pagination-log-suhu" class="hidden"></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ==================== 3. MENU PETUGAS DAN UNIT ==================== -->
+            <div id="sec-petugas-dan-unit" class="menu-section hidden space-y-5 w-full">
+                <section class="w-full bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <!-- Header Section -->
+                    <div class="px-3.5 sm:px-5 py-4 border-b border-slate-100 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-users-gear"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-sm sm:text-base font-bold text-slate-800">Petugas dan Unit</h2>
+                                <p id="petugas-count-info" class="text-[11px] text-slate-500">Daftar petugas dan unit pendingin UPTD RPH dan Pasar Hewan</p>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            <input type="text" id="cari-petugas" oninput="renderTabelPetugas()" placeholder="Cari nama petugas, unit, atau jenis..."
+                                class="flex-1 sm:w-56 text-xs px-3.5 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500">
+                            <button type="button" onclick="toggleSemuaFormPetugasUnit()" id="btn-toggle-all-forms"
+                                class="bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shrink-0">
+                                <i class="fa-solid fa-plus-minus"></i>
+                                <span id="label-toggle-all-forms">Tutup Form</span>
+                            </button>
+                            <button type="button" onclick="cetakPDFMenu('petugas-dan-unit')"
+                                class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shrink-0">
+                                <i class="fa-solid fa-file-pdf text-rose-400"></i>
+                                <span>PDF</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-3 sm:p-4 space-y-5 w-full">
+                        <!-- DUA KOLOM TAMBAH PETUGAS & TAMBAH UNIT -->
+                        <div id="wrap-forms-petugas-unit" class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+                            <!-- Kolom 1: Tambah Petugas -->
+                            <div class="rounded-xl border border-emerald-200 bg-emerald-50/40 overflow-hidden">
+                                <button type="button" onclick="toggleFormCard('petugas')"
+                                    class="w-full px-4 py-3 flex items-center justify-between gap-2 text-left bg-emerald-100/60 hover:bg-emerald-100 transition-colors cursor-pointer">
+                                    <span class="text-xs font-bold text-emerald-900 uppercase tracking-wide flex items-center gap-2">
+                                        <i class="fa-solid fa-user-plus"></i>
+                                        <span>Tambah Petugas</span>
+                                    </span>
+                                    <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800">
+                                        <span id="txt-toggle-form-petugas">Tutup</span>
+                                        <i id="icon-toggle-form-petugas" class="fa-solid fa-chevron-down transition-transform duration-200"></i>
+                                    </span>
+                                </button>
+
+                                <form id="form-tambah-petugas" onsubmit="tambahPetugasInline(event)" class="p-4 space-y-2.5 border-t border-emerald-200/70">
+                                    <div class="flex flex-col sm:flex-row items-stretch sm:items-end gap-2.5">
+                                        <div class="flex-1">
+                                            <label for="input-petugas-nama" class="block text-[11px] font-bold text-slate-700 mb-1">Nama Petugas</label>
+                                            <input type="text" id="input-petugas-nama" required placeholder="Masukkan nama petugas"
+                                                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs focus:outline-none focus:border-emerald-500">
+                                        </div>
+                                        <div class="flex-1">
+                                            <label for="input-petugas-unit" class="block text-[11px] font-bold text-slate-700 mb-1">Unit</label>
+                                            <select id="input-petugas-unit" required
+                                                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs focus:outline-none focus:border-emerald-500 font-medium">
+                                                <option value="">-- Pilih Unit --</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" title="Tambah Petugas" aria-label="Tambah Petugas"
+                                            class="h-[38px] w-full sm:w-[38px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center shrink-0 cursor-pointer shadow-sm transition-colors">
+                                            <i class="fa-solid fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Kolom 2: Tambah Unit -->
+                            <div class="rounded-xl border border-sky-200 bg-sky-50/40 overflow-hidden">
+                                <button type="button" onclick="toggleFormCard('unit')"
+                                    class="w-full px-4 py-3 flex items-center justify-between gap-2 text-left bg-sky-100/70 hover:bg-sky-100 transition-colors cursor-pointer">
+                                    <span class="text-xs font-bold text-sky-900 uppercase tracking-wide flex items-center gap-2">
+                                        <i class="fa-solid fa-snowflake"></i>
+                                        <span>Tambah Unit</span>
+                                    </span>
+                                    <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-sky-800">
+                                        <span id="txt-toggle-form-unit">Tutup</span>
+                                        <i id="icon-toggle-form-unit" class="fa-solid fa-chevron-down transition-transform duration-200"></i>
+                                    </span>
+                                </button>
+
+                                <form id="form-tambah-unit" onsubmit="tambahUnitInline(event)" class="p-4 space-y-2.5 border-t border-sky-200/70">
+                                    <div class="flex flex-col sm:flex-row items-stretch sm:items-end gap-2.5">
+                                        <div class="flex-1">
+                                            <label for="input-unit-nama" class="block text-[11px] font-bold text-slate-700 mb-1">Unit</label>
+                                            <input type="text" id="input-unit-nama" required placeholder="Masukkan nama unit"
+                                                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs focus:outline-none focus:border-sky-500">
+                                        </div>
+                                        <div class="flex-1">
+                                            <label for="input-unit-jenis" class="block text-[11px] font-bold text-slate-700 mb-1">Jenis Pendingin</label>
+                                            <input type="text" id="input-unit-jenis" required placeholder="Masukkan jenis pendingin"
+                                                class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs focus:outline-none focus:border-sky-500">
+                                        </div>
+                                        <button type="submit" title="Tambah Unit" aria-label="Tambah Unit"
+                                            class="h-[38px] w-full sm:w-[38px] rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-bold flex items-center justify-center shrink-0 cursor-pointer shadow-sm transition-colors">
+                                            <i class="fa-solid fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Daftar Chip Unit & Jenis Pendingin Terdaftar -->
+                        <div id="container-unit-chips" class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2 w-full">
+                            <p class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Unit &amp; Jenis Pendingin Terdaftar</p>
+                            <div id="list-unit-chips" class="flex flex-wrap gap-2"></div>
+                        </div>
+
+                        <!-- TABEL PETUGAS DIKELOMPOKKAN BERDASARKAN UNIT (UJUNG KIRI KE UJUNG KANAN) -->
+                        <div class="border border-slate-400 rounded-xl overflow-hidden w-full">
+                            <div class="table-scroll w-full">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-emerald-700 text-white text-[11px] font-bold uppercase tracking-wider">
+                                            <th class="border border-slate-400 px-3 py-3 text-center w-14">No</th>
+                                            <th class="border border-slate-400 px-4 py-3">Nama Petugas</th>
+                                            <th class="border border-slate-400 px-4 py-3">Unit</th>
+                                            <th class="border border-slate-400 px-4 py-3">Jenis Pendingin</th>
+                                            <th class="border border-slate-400 px-3 py-3 text-center w-24">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbody-petugas" class="text-xs">
+                                        <tr>
+                                            <td colspan="5" class="border border-slate-400 text-center py-8 text-slate-400">Memuat data petugas dan unit...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <footer class="bg-white border-t border-slate-200 py-4 px-4 text-center text-[11px] text-slate-400 w-full">
+            Admin Pantauan Suhu Pendingin UPTD RPH dan Pasar Hewan &bull; Monitoring Real-Time
+        </footer>
+    </div>
+
+    <!-- MODAL KALENDER DETAIL DASHBOARD RESPONSIF -->
+    <div id="modal-kalender-dashboard" onclick="tutupModalKalender()" class="fixed inset-0 bg-black/65 backdrop-blur-[1px] z-[65] hidden flex items-center justify-center p-2.5 sm:p-4">
+        <div onclick="event.stopPropagation()" class="w-full max-w-4xl max-h-[92dvh] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+            <!-- Header Modal -->
+            <div class="bg-gradient-to-r from-sky-800 to-cyan-700 text-white px-4 sm:px-5 py-3.5 flex items-center justify-between gap-2 shrink-0">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-9 h-9 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-calendar-days text-white text-base"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="text-xs sm:text-sm font-black uppercase tracking-wide truncate">Kalender Suhu Terendah &amp; Tertinggi</h3>
+                        <p class="text-[10px] sm:text-[11px] text-sky-100 truncate">Pilih tanggal pada kalender untuk melihat suhu terendah dan tertinggi unit terdaftar</p>
+                    </div>
+                </div>
+                <button type="button" onclick="tutupModalKalender()" title="Tutup"
+                    class="w-8 h-8 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center cursor-pointer shrink-0">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Isi Modal Responsif (Kalender + Detail Unit Terdaftar) -->
+            <div class="flex-1 overflow-y-auto p-3.5 sm:p-5 grid grid-cols-1 md:grid-cols-12 gap-4">
+                <!-- Kiri: Grid Kalender Bulanan -->
+                <div class="md:col-span-6 space-y-3">
+                    <div class="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-xl p-2">
+                        <button type="button" onclick="geserBulanKalender(-1)" title="Bulan Sebelumnya"
+                            class="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center cursor-pointer">
+                            <i class="fa-solid fa-chevron-left text-xs"></i>
+                        </button>
+                        <div class="text-center">
+                            <p id="kal-bulan-tahun" class="text-xs sm:text-sm font-black text-slate-800 uppercase">Bulan Tahun</p>
+                        </div>
+                        <button type="button" onclick="geserBulanKalender(1)" title="Bulan Berikutnya"
+                            class="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center cursor-pointer">
+                            <i class="fa-solid fa-chevron-right text-xs"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <input type="date" id="kal-lompat-tanggal" onchange="lompatKeTanggalKalender(this.value)"
+                            class="flex-1 text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-semibold focus:outline-none focus:border-sky-500">
+                        <button type="button" onclick="pilihHariIniKalender()"
+                            class="text-[11px] font-bold px-3 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 cursor-pointer shrink-0">
+                            Hari Ini
+                        </button>
+                    </div>
+
+                    <!-- Header Nama Hari -->
+                    <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-500 uppercase pt-1">
+                        <div>Min</div>
+                        <div>Sen</div>
+                        <div>Sel</div>
+                        <div>Rab</div>
+                        <div>Kam</div>
+                        <div>Jum</div>
+                        <div>Sab</div>
+                    </div>
+
+                    <!-- Grid Tanggal -->
+                    <div id="kal-grid-hari" class="grid grid-cols-7 gap-1"></div>
+                </div>
+
+                <!-- Kanan: Detail Suhu Terendah & Suhu Tertinggi Unit Terdaftar Pada Tanggal Terpilih -->
+                <div class="md:col-span-6 flex flex-col border border-slate-200 rounded-2xl bg-slate-50/70 overflow-hidden min-h-[260px]">
+                    <div class="px-3.5 py-3 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-sky-700">Detail Suhu Tanggal</p>
+                            <p id="kal-detail-judul" class="text-xs sm:text-sm font-black text-slate-800">-</p>
+                        </div>
+                        <span id="kal-detail-count" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
+                            0 Pendingin
+                        </span>
+                    </div>
+
+                    <div id="kal-detail-list" class="flex-1 overflow-y-auto p-3 space-y-2.5 max-h-[340px]">
+                        <p class="text-xs text-slate-400 text-center py-8">Pilih tanggal pada kalender.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Aksi Modal -->
+            <div class="px-4 sm:px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end shrink-0">
+                <button type="button" onclick="tutupModalKalender()"
+                    class="text-xs font-bold px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white cursor-pointer">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL POP-UP PREVIEW AVATAR FOTO LAPORAN PETUGAS -->
+    <div id="modal-popup-foto" onclick="tutupPopupFoto()" class="fixed inset-0 bg-black/80 backdrop-blur-[1px] z-[70] hidden flex items-center justify-center p-4">
+        <div onclick="event.stopPropagation()" class="relative max-w-lg w-full bg-white rounded-2xl overflow-hidden shadow-2xl border border-slate-200 p-2.5">
+            <button type="button" onclick="tutupPopupFoto()" title="Tutup"
+                class="absolute top-4 right-4 w-9 h-9 bg-black/50 hover:bg-black/75 text-white rounded-full flex items-center justify-center transition-colors cursor-pointer z-10">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <img id="popup-img" src="" alt="Foto Bukti Pemeriksaan Suhu"
+                class="w-full h-auto max-h-[72vh] object-contain rounded-xl bg-slate-100">
+            <div class="p-3 text-center">
+                <p id="popup-judul" class="text-sm font-bold text-slate-800"></p>
+                <p id="popup-subinfo" class="text-xs text-slate-500 mt-0.5"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDIT PETUGAS -->
+    <div id="modal-petugas" onclick="tutupModalPetugas()" class="fixed inset-0 bg-black/60 backdrop-blur-[1px] z-[60] hidden flex items-center justify-center p-4">
+        <div onclick="event.stopPropagation()" class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+            <div class="bg-emerald-700 text-white px-5 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-solid fa-pen-to-square text-emerald-200"></i>
+                    <h3 class="text-sm font-bold uppercase tracking-wide">Edit Petugas</h3>
+                </div>
+                <button type="button" onclick="tutupModalPetugas()" class="w-8 h-8 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="form-petugas" onsubmit="simpanEditPetugas(event)" class="p-5 space-y-3.5 text-xs">
+                <input type="hidden" id="petugas-id">
+
+                <div>
+                    <label for="petugas-nama" class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Nama Petugas *</label>
+                    <input type="text" id="petugas-nama" required placeholder="Masukkan nama petugas"
+                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div>
+                    <label for="petugas-unit" class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Unit *</label>
+                    <select id="petugas-unit" required
+                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-500 font-medium">
+                        <option value="">-- Pilih Unit --</option>
+                    </select>
+                </div>
+
+                <div class="pt-2 flex items-center justify-end gap-2">
+                    <button type="button" onclick="tutupModalPetugas()"
+                        class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold cursor-pointer">
+                        Batal
+                    </button>
+                    <button type="submit"
+                        class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm cursor-pointer">
+                        <i class="fa-solid fa-floppy-disk mr-1"></i>Simpan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- AREA KHUSUS CETAK PDF -->
+    <div id="print-area"></div>
+
+    <script>
+        // ==================== KONFIGURASI FIREBASE ====================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBM4CICW2Oce4GNRKYMIeAB5rfWGSrnaH4",
+            authDomain: "smart-pagar-nusa.firebaseapp.com",
+            databaseURL: "https://smart-pagar-nusa-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "smart-pagar-nusa",
+            storageBucket: "smart-pagar-nusa.firebasestorage.app",
+            messagingSenderId: "392604519486",
+            appId: "1:392604519486:web:65e674e764859a40d5956f"
+        };
+
+        let database = null;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+        } catch (e) {
+            database = null;
+        }
+
+        const DEFAULT_LOGO_SRC = "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%230284c7'/%3E%3Cstop offset='100%25' stop-color='%2306b6d4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Cpath d='M32 10v44M13 21l38 22M51 21L13 43' stroke='%23ffffff' stroke-width='3.5' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%230f172a' stroke='%23ffffff' stroke-width='3'/%3E%3C/svg%3E";
+        const DEFAULT_JUDUL = "Admin Pantauan Suhu Pendingin UPTD RPH dan Pasar Hewan";
+
+        const LOCAL_KEY_UNITS = "rph_suhu_units_v2";
+        const LOCAL_KEY_LOGS = "rph_suhu_logs_v2";
+        const LOCAL_KEY_PETUGAS = "rph_suhu_petugas_v2";
+        const LOCAL_KEY_SETTINGS = "rph_suhu_settings_v2";
+        const ITEMS_PER_PAGE = 10;
+
+        // PALET WARNA BERBEDA TIAP UNIT
+        const UNIT_COLORS = [
+            {
+                hex: "#0284c7", hexBg: "#e0f2fe", hexBorder: "#7dd3fc", hexText: "#0369a1",
+                cardCls: "bg-gradient-to-br from-sky-600 to-sky-700 border-sky-500 text-white",
+                subTextCls: "text-sky-100",
+                pillCls: "bg-white/20 text-white border-white/25",
+                boxMinMaxCls: "bg-sky-900/30 border-white/15 text-sky-50",
+                dotClass: "bg-sky-600",
+                badgeCls: "bg-sky-50 text-sky-800 border-sky-200"
+            },
+            {
+                hex: "#059669", hexBg: "#d1fae5", hexBorder: "#6ee7b7", hexText: "#047857",
+                cardCls: "bg-gradient-to-br from-emerald-600 to-emerald-700 border-emerald-500 text-white",
+                subTextCls: "text-emerald-100",
+                pillCls: "bg-white/20 text-white border-white/25",
+                boxMinMaxCls: "bg-emerald-950/30 border-white/15 text-emerald-50",
+                dotClass: "bg-emerald-600",
+                badgeCls: "bg-emerald-50 text-emerald-800 border-emerald-200"
+            },
+            {
+                hex: "#7c3aed", hexBg: "#ede9fe", hexBorder: "#c4b5fd", hexText: "#6d28d9",
+                cardCls: "bg-gradient-to-br from-violet-600 to-violet-700 border-violet-500 text-white",
+                subTextCls: "text-violet-100",
+                pillCls: "bg-white/20 text-white border-white/25",
+                boxMinMaxCls: "bg-violet-950/30 border-white/15 text-violet-50",
+                dotClass: "bg-violet-600",
+                badgeCls: "bg-violet-50 text-violet-800 border-violet-200"
+            },
+            {
+                hex: "#d97706", hexBg: "#fef3c7", hexBorder: "#fcd34d", hexText: "#b45309",
+                cardCls: "bg-gradient-to-br from-amber-500 to-amber-600 border-amber-400 text-white",
+                subTextCls: "text-amber-50",
+                pillCls: "bg-white/20 text-white border-white/25",
+                boxMinMaxCls: "bg-amber-950/25 border-white/15 text-amber-50",
+                dotClass: "bg-amber-600",
+                badgeCls: "bg-amber-50 text-amber-800 border-amber-200"
+            },
+            {
+                hex: "#e11d48", hexBg: "#ffe4e6", hexBorder: "#fda4af", hexText: "#be123c",
+                cardCls: "bg-gradient-to-br from-rose-600 to-rose-700 border-rose-500 text-white",
+                subTextCls: "text-rose-100",
+                pillCls: "bg-white/20 text-white border-white/25",
+                boxMinMaxCls: "bg-rose-950/30 border-white/15 text-rose-50",
+                dotClass: "bg-rose-600",
+                badgeCls: "bg-rose-50 text-rose-800 border-rose-200"
+            },
+            {
+                hex: "#0891b2", hexBg: "#cffafe", hexBorder: "#67e8f9", hexText: "#0e7490",
+                cardCls: "bg-gradient-to-br from-cyan-600 to-cyan-700 border-cyan-500 text-white",
+                subTextCls: "text-cyan-100",
+                pillCls: "bg-white/20 text-white border-white/25",
+                boxMinMaxCls: "bg-cyan-950/30 border-white/15 text-cyan-50",
+                dotClass: "bg-cyan-600",
+                badgeCls: "bg-cyan-50 text-cyan-800 border-cyan-200"
+            },
+            {
+                hex: "#4f46e5", hexBg: "#e0e7ff", hexBorder: "#a5b4fc", hexText: "#4338ca",
+                cardCls: "bg-gradient-to-br from-indigo-600 to-indigo-700 border-indigo-500 text-white",
+                subTextCls: "text-indigo-100",
+                pillCls: "bg-white/20 text-white border-white/25",
+                boxMinMaxCls: "bg-indigo-950/30 border-white/15 text-indigo-50",
+                dotClass: "bg-indigo-600",
+                badgeCls: "bg-indigo-50 text-indigo-800 border-indigo-200"
+            },
+            {
+                hex: "#ea580c", hexBg: "#ffedd5", hexBorder: "#fdba74", hexText: "#c2410c",
+                cardCls: "bg-gradient-to-br from-orange-600 to-orange-700 border-orange-500 text-white",
+                subTextCls: "text-orange-100",
+                pillCls: "bg-white/20 text-white border-white/25",
+                boxMinMaxCls: "bg-orange-950/30 border-white/15 text-orange-50",
+                dotClass: "bg-orange-600",
+                badgeCls: "bg-orange-50 text-orange-800 border-orange-200"
+            }
+        ];
+
+        let dataUnits = [];
+        let dataLogs = [];
+        let dataPetugas = [];
+        let pengaturanApp = { judul: DEFAULT_JUDUL, logo: DEFAULT_LOGO_SRC };
+        let logPage = 1;
+        let menuAktif = "dashboard";
+        let toastTimer = null;
+
+        // State Kalender Dashboard
+        let kalBulanAktif = new Date().getMonth();
+        let kalTahunAktif = new Date().getFullYear();
+        let kalTanggalDipilih = getTodayIso();
+
+        // State Buka/Tutup Form Tambah Petugas & Unit
+        let formState = {
+            petugas: window.innerWidth >= 768,
+            unit: window.innerWidth >= 768
+        };
+
+        // ==================== SIDEBAR BUKA & TUTUP (TERTUTUP DEFAULT DI LAPTOP & MOBILE) ====================
+        let sidebarTerbuka = false;
+
+        function setSidebar(buka) {
+            sidebarTerbuka = Boolean(buka);
+            terapkanStateSidebar();
+        }
+
+        function toggleSidebar() {
+            sidebarTerbuka = !sidebarTerbuka;
+            terapkanStateSidebar();
+        }
+
+        function terapkanStateSidebar() {
+            const sidebar = document.getElementById("app-sidebar");
+            const overlay = document.getElementById("sidebar-overlay");
+            if (!sidebar || !overlay) return;
+
+            if (sidebarTerbuka) {
+                sidebar.classList.remove("-translate-x-full");
+                sidebar.classList.add("translate-x-0");
+                overlay.classList.remove("hidden");
+            } else {
+                sidebar.classList.remove("translate-x-0");
+                sidebar.classList.add("-translate-x-full");
+                overlay.classList.add("hidden");
+            }
+        }
+
+        // Tutup sidebar otomatis saat tombol Escape ditekan
+        window.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && sidebarTerbuka) {
+                setSidebar(false);
+            }
+        });
+
+        function pilihMenu(menu) {
+            const validMenus = ["dashboard", "laporan-petugas", "petugas-dan-unit"];
+            const validMenu = validMenus.includes(menu) ? menu : "dashboard";
+            menuAktif = validMenu;
+
+            document.querySelectorAll(".sidebar-btn").forEach(btn => {
+                if (btn.dataset.menu === validMenu) {
+                    btn.classList.add("sidebar-link-active");
+                    btn.classList.remove("text-slate-300", "hover:bg-slate-800");
+                } else {
+                    btn.classList.remove("sidebar-link-active");
+                    btn.classList.add("text-slate-300", "hover:bg-slate-800");
+                }
+            });
+
+            document.querySelectorAll(".menu-section").forEach(el => el.classList.add("hidden"));
+            const target = document.getElementById("sec-" + validMenu);
+            if (target) target.classList.remove("hidden");
+
+            const titleEl = document.getElementById("topbar-title");
+            if (titleEl) titleEl.innerText = pengaturanApp.judul || DEFAULT_JUDUL;
+
+            // Sidebar otomatis menutup setiap kali menu / sub menu diklik (di laptop maupun mobile)
+            setSidebar(false);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        function tampilkanToast(pesan) {
+            const el = document.getElementById("toast-notif");
+            const txt = document.getElementById("toast-notif-text");
+            if (!el || !txt) return;
+            txt.innerText = pesan;
+            el.classList.remove("hidden");
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => el.classList.add("hidden"), 2800);
+        }
+
+        // ==================== FORM BUKA & TUTUP RESPONSIF (PETUGAS & UNIT) ====================
+        function terapkanStateFormPetugasUnit() {
+            ["petugas", "unit"].forEach(kunci => {
+                const formEl = document.getElementById("form-tambah-" + kunci);
+                const iconEl = document.getElementById("icon-toggle-form-" + kunci);
+                const txtEl = document.getElementById("txt-toggle-form-" + kunci);
+                if (!formEl) return;
+
+                if (formState[kunci]) {
+                    formEl.classList.remove("hidden");
+                    if (iconEl) iconEl.classList.remove("-rotate-90");
+                    if (txtEl) txtEl.innerText = "Tutup";
+                } else {
+                    formEl.classList.add("hidden");
+                    if (iconEl) iconEl.classList.add("-rotate-90");
+                    if (txtEl) txtEl.innerText = "Buka";
+                }
+            });
+
+            const lblAll = document.getElementById("label-toggle-all-forms");
+            if (lblAll) {
+                const anyOpen = formState.petugas || formState.unit;
+                lblAll.innerText = anyOpen ? "Tutup Form" : "Buka Form";
+            }
+        }
+
+        function toggleFormCard(kunci) {
+            formState[kunci] = !formState[kunci];
+            terapkanStateFormPetugasUnit();
+        }
+
+        function toggleSemuaFormPetugasUnit() {
+            const anyOpen = formState.petugas || formState.unit;
+            const nextState = !anyOpen;
+            formState.petugas = nextState;
+            formState.unit = nextState;
+            terapkanStateFormPetugasUnit();
+        }
+
+        // ==================== DROPDOWN & ACCORDION DASHBOARD ====================
+        function terapkanDropdownDashboard() {
+            const mode = document.getElementById("dash-dropdown-tampilan")?.value || "semua";
+            const panelPantauan = document.getElementById("dash-panel-pantauan");
+            const panelGrafik = document.getElementById("dash-panel-grafik");
+
+            if (mode === "pantauan") {
+                panelPantauan.classList.remove("hidden");
+                panelGrafik.classList.add("hidden");
+                setAccordionState("pantauan", true);
+            } else if (mode === "grafik") {
+                panelPantauan.classList.add("hidden");
+                panelGrafik.classList.remove("hidden");
+                setAccordionState("grafik", true);
+            } else {
+                panelPantauan.classList.remove("hidden");
+                panelGrafik.classList.remove("hidden");
+                setAccordionState("pantauan", true);
+                setAccordionState("grafik", true);
+            }
+        }
+
+        function setAccordionState(bagian, buka) {
+            const body = document.getElementById("body-acc-" + bagian);
+            const icon = document.getElementById("icon-acc-" + bagian);
+            if (!body || !icon) return;
+            if (buka) {
+                body.classList.remove("hidden");
+                icon.classList.remove("-rotate-90");
+            } else {
+                body.classList.add("hidden");
+                icon.classList.add("-rotate-90");
+            }
+        }
+
+        function toggleAccordionDashboard(bagian) {
+            const body = document.getElementById("body-acc-" + bagian);
+            if (!body) return;
+            const sedangTutup = body.classList.contains("hidden");
+            setAccordionState(bagian, sedangTutup);
+        }
+
+        // ==================== HELPER ====================
+        function getTodayIso() {
+            const d = new Date();
+            const pad = n => String(n).padStart(2, "0");
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        }
+
+        function esc(str) {
+            if (str === null || str === undefined) return "";
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function safeJsonAttr(val) {
+            return JSON.stringify(val || "")
+                .replace(/'/g, "\\u0027")
+                .replace(/</g, "\\u003c")
+                .replace(/>/g, "\\u003e");
+        }
+
+        function getNowDateTimeLocal() {
+            const d = new Date();
+            const pad = n => String(n).padStart(2, "0");
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        function formatWaktu(waktuStr) {
+            if (!waktuStr) return "-";
+            const dt = new Date(waktuStr);
+            if (isNaN(dt.getTime())) return esc(waktuStr);
+            return dt.toLocaleString("id-ID", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+        }
+
+        function formatWaktuSplit(waktuStr) {
+            if (!waktuStr) return { tgl: "-", jam: "" };
+            const dt = new Date(waktuStr);
+            if (isNaN(dt.getTime())) return { tgl: esc(waktuStr), jam: "" };
+            return {
+                tgl: dt.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "2-digit" }),
+                jam: dt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+            };
+        }
+
+        function formatTanggalLengkap(isoDate) {
+            if (!isoDate) return "-";
+            const dt = new Date(isoDate + "T00:00:00");
+            if (isNaN(dt.getTime())) return isoDate;
+            return dt.toLocaleDateString("id-ID", {
+                weekday: "long",
+                day: "2-digit",
+                month: "long",
+                year: "numeric"
+            });
+        }
+
+        function formatSuhu(val) {
+            if (val === "" || val === null || val === undefined) return "-";
+            const num = Number(val);
+            if (isNaN(num)) return "-";
+            return `${num.toFixed(1)} °C`;
+        }
+
+        function getRegisteredUnits() {
+            return dataUnits.filter(u =>
+                String(u.kondisi || "Aktif").toLowerCase() !== "nonaktif" &&
+                String(u.nama || "").trim() !== ""
+            );
+        }
+
+        function getNamaUnitPetugas(p) {
+            if (p.unit_id) {
+                const found = dataUnits.find(u => u.id === p.unit_id);
+                if (found) return found.nama;
+            }
+            return p.unit || "-";
+        }
+
+        function isUnitTerdaftar(namaUnit) {
+            const target = String(namaUnit || "").trim().toLowerCase();
+            if (!target || target === "-") return false;
+            return getRegisteredUnits().some(u =>
+                String(u.nama || "").trim().toLowerCase() === target
+            );
+        }
+
+        function isPetugasTerdaftarPadaUnit(namaPetugas, namaUnit) {
+            const pTarget = String(namaPetugas || "").trim().toLowerCase();
+            const uTarget = String(namaUnit || "").trim().toLowerCase();
+            if (!pTarget || pTarget === "-" || !uTarget || uTarget === "-") return false;
+            if (!isUnitTerdaftar(uTarget)) return false;
+
+            return dataPetugas.some(p => {
+                const pNama = String(p.nama || "").trim().toLowerCase();
+                const pUnit = String(getNamaUnitPetugas(p) || "").trim().toLowerCase();
+                return pNama === pTarget && pUnit === uTarget;
+            });
+        }
+
+        function getUniqueUnitNames() {
+            const list = [];
+            const seen = new Set();
+            getRegisteredUnits().forEach(u => {
+                const nama = String(u.nama || "").trim();
+                const key = nama.toLowerCase();
+                if (nama && !seen.has(key)) {
+                    seen.add(key);
+                    list.push(nama);
+                }
+            });
+            return list;
+        }
+
+        function getColorForUnitName(unitName) {
+            const unique = getUniqueUnitNames();
+            const idx = unique.findIndex(n => n.toLowerCase() === String(unitName || "").trim().toLowerCase());
+            return UNIT_COLORS[(idx >= 0 ? idx : 0) % UNIT_COLORS.length];
+        }
+
+        function getJenisListByUnitName(unitName) {
+            const key = String(unitName || "").trim().toLowerCase();
+            if (!key) return [];
+            const list = [];
+            const seen = new Set();
+            getRegisteredUnits().forEach(u => {
+                if (String(u.nama || "").trim().toLowerCase() === key) {
+                    const j = String(u.jenis || "").trim();
+                    if (j && !seen.has(j.toLowerCase())) {
+                        seen.add(j.toLowerCase());
+                        list.push(j);
+                    }
+                }
+            });
+            return list;
+        }
+
+        function getLogUnitName(item) {
+            if (item.unit_id) {
+                const found = dataUnits.find(u => u.id === item.unit_id);
+                if (found && found.nama) return found.nama;
+            }
+            if (item.unit_petugas && String(item.unit_petugas).trim() !== "") {
+                return String(item.unit_petugas).trim();
+            }
+            return String(item.nama_unit || "-").replace(/\s*\([^)]*\)\s*$/, "").trim() || "-";
+        }
+
+        function getLogJenisName(item) {
+            if (item.jenis_pendingin) return item.jenis_pendingin;
+            if (item.jenis_ruangan) return item.jenis_ruangan;
+            if (item.unit_id) {
+                const found = dataUnits.find(u => u.id === item.unit_id);
+                if (found && found.jenis) return found.jenis;
+            }
+            return "-";
+        }
+
+        function isLogMatchesRegisteredUnit(logItem, unitObj) {
+            if (!logItem || !unitObj) return false;
+            if (logItem.unit_id && logItem.unit_id === unitObj.id) return true;
+            const logUnit = getLogUnitName(logItem).toLowerCase();
+            const logJenis = getLogJenisName(logItem).toLowerCase();
+            const uNama = String(unitObj.nama || "").trim().toLowerCase();
+            const uJenis = String(unitObj.jenis || "").trim().toLowerCase();
+            return logUnit === uNama && logJenis === uJenis;
+        }
+
+        function extractLogDateKey(waktuStr) {
+            if (!waktuStr) return "";
+            const s = String(waktuStr);
+            if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+            const dt = new Date(s);
+            if (isNaN(dt.getTime())) return "";
+            const pad = n => String(n).padStart(2, "0");
+            return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+        }
+
+        function getPendinginSummaries(filterUnitName, filterTanggalIso) {
+            const filterKey = String(filterUnitName || "").trim().toLowerCase();
+            const tglFilter = String(filterTanggalIso || "").trim();
+
+            const filteredUnits = getRegisteredUnits().filter(u => {
+                if (!filterKey) return true;
+                return String(u.nama || "").trim().toLowerCase() === filterKey;
+            });
+
+            return filteredUnits.map(u => {
+                const uNama = String(u.nama || "").trim();
+                const uJenis = String(u.jenis || "Pendingin").trim();
+
+                const logs = dataLogs
+                    .filter(l => {
+                        const validSuhu = l.suhu !== null && l.suhu !== "" && !isNaN(Number(l.suhu));
+                        if (!validSuhu) return false;
+                        if (tglFilter && extractLogDateKey(l.waktu) !== tglFilter) return false;
+                        return isLogMatchesRegisteredUnit(l, u);
+                    })
+                    .sort((a, b) => new Date(a.waktu || 0) - new Date(b.waktu || 0));
+
+                let suhuTerakhir = null;
+                let suhuTerendah = null;
+                let suhuTertinggi = null;
+                let waktuTerakhir = "";
+
+                if (logs.length > 0) {
+                    const nums = logs.map(l => Number(l.suhu));
+                    const lastLog = logs[logs.length - 1];
+                    suhuTerakhir = Number(lastLog.suhu);
+                    suhuTerendah = Math.min(...nums);
+                    suhuTertinggi = Math.max(...nums);
+                    waktuTerakhir = lastLog.waktu || "";
+                } else if (!tglFilter && u.suhu_terkini !== null && u.suhu_terkini !== "" && !isNaN(Number(u.suhu_terkini))) {
+                    suhuTerakhir = Number(u.suhu_terkini);
+                    suhuTerendah = Number(u.suhu_terkini);
+                    suhuTertinggi = Number(u.suhu_terkini);
+                    waktuTerakhir = u.updated_at || "";
+                }
+
+                return {
+                    id: u.id,
+                    nama: uNama,
+                    jenis: uJenis,
+                    color: getColorForUnitName(uNama),
+                    logs,
+                    suhuTerakhir,
+                    suhuTerendah,
+                    suhuTertinggi,
+                    waktuTerakhir
+                };
+            });
+        }
+
+        function sinkronkanSuhuTerkiniUnitDariLogs() {
+            const unitUpdates = {};
+            dataUnits = dataUnits.map(u => {
+                const matchingLogs = dataLogs
+                    .filter(l => {
+                        const validSuhu = l.suhu !== null && l.suhu !== "" && !isNaN(Number(l.suhu));
+                        if (!validSuhu) return false;
+                        return isLogMatchesRegisteredUnit(l, u);
+                    })
+                    .sort((a, b) => new Date(b.waktu || 0) - new Date(a.waktu || 0));
+
+                const nextUnit = { ...u };
+                if (matchingLogs.length > 0) {
+                    nextUnit.suhu_terkini = Number(matchingLogs[0].suhu);
+                    nextUnit.updated_at = matchingLogs[0].waktu || u.updated_at || "";
+                    nextUnit.petugas_terakhir = matchingLogs[0].petugas || u.petugas_terakhir || "";
+                } else {
+                    nextUnit.suhu_terkini = null;
+                    nextUnit.updated_at = "";
+                    nextUnit.petugas_terakhir = "";
+                }
+                unitUpdates[nextUnit.id] = nextUnit;
+                return nextUnit;
+            });
+
+            if (database && Object.keys(unitUpdates).length > 0) {
+                database.ref("pantauan_suhu_pendingin/units").update(unitUpdates).catch(() => {});
+            }
+        }
+
+        // ==================== PENYIMPANAN (LOCAL + FIREBASE) ====================
+        function simpanKeLocal() {
+            try {
+                localStorage.setItem(LOCAL_KEY_UNITS, JSON.stringify(dataUnits));
+                localStorage.setItem(LOCAL_KEY_LOGS, JSON.stringify(dataLogs));
+                localStorage.setItem(LOCAL_KEY_PETUGAS, JSON.stringify(dataPetugas));
+                localStorage.setItem(LOCAL_KEY_SETTINGS, JSON.stringify(pengaturanApp));
+            } catch (e) {}
+        }
+
+        function muatDariLocal() {
+            try {
+                const rawUnits = localStorage.getItem(LOCAL_KEY_UNITS);
+                const rawLogs = localStorage.getItem(LOCAL_KEY_LOGS);
+                const rawPetugas = localStorage.getItem(LOCAL_KEY_PETUGAS);
+                const rawSettings = localStorage.getItem(LOCAL_KEY_SETTINGS);
+
+                dataUnits = rawUnits ? (JSON.parse(rawUnits) || []) : [];
+                dataLogs = rawLogs ? (JSON.parse(rawLogs) || []) : [];
+                dataPetugas = rawPetugas ? (JSON.parse(rawPetugas) || []) : [];
+
+                if (rawSettings) {
+                    pengaturanApp = { ...pengaturanApp, ...(JSON.parse(rawSettings) || {}) };
+                }
+            } catch (e) {
+                dataUnits = [];
+                dataLogs = [];
+                dataPetugas = [];
+            }
+        }
+
+        function updateBadgeKoneksi(online) {
+            const el = document.getElementById("badge-koneksi");
+            if (!el) return;
+            if (online) {
+                el.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30";
+                el.innerHTML = `<i class="fa-solid fa-circle text-[7px] mr-1 animate-pulse"></i>Realtime Sync`;
+            } else {
+                el.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30";
+                el.innerHTML = `<i class="fa-solid fa-database text-[9px] mr-1"></i>Mode Lokal`;
+            }
+        }
+
+        let logsInitializedFromServer = false;
+
+        function aktifkanSync() {
+            muatDariLocal();
+            terapkanPengaturanUI();
+            renderSemua();
+
+            if (!database) {
+                updateBadgeKoneksi(false);
+                return;
+            }
+
+            const refUnits = database.ref("pantauan_suhu_pendingin/units");
+            const refLogs = database.ref("pantauan_suhu_pendingin/logs");
+            const refPetugas = database.ref("pantauan_suhu_pendingin/petugas");
+            const refSettings = database.ref("pantauan_suhu_pendingin/settings");
+
+            refUnits.on("value", snap => {
+                updateBadgeKoneksi(true);
+                const val = snap.val();
+                if (val) {
+                    dataUnits = Object.entries(val).map(([k, v]) => ({ ...v, id: v.id || k }));
+                    simpanKeLocal();
+                    renderSemua();
+                } else {
+                    dataUnits = [];
+                    simpanKeLocal();
+                    renderSemua();
+                }
+            }, () => updateBadgeKoneksi(false));
+
+            refLogs.on("value", snap => {
+                const val = snap.val();
+                if (val) {
+                    logsInitializedFromServer = true;
+                    dataLogs = Object.entries(val).map(([k, v]) => ({ ...v, id: v.id || k }));
+                    dataLogs.sort((a, b) => new Date(b.waktu || 0) - new Date(a.waktu || 0));
+                    simpanKeLocal();
+                    renderSemua();
+                } else {
+                    logsInitializedFromServer = true;
+                    dataLogs = [];
+                    simpanKeLocal();
+                    renderSemua();
+                }
+            }, () => updateBadgeKoneksi(false));
+
+            refPetugas.on("value", snap => {
+                const val = snap.val();
+                if (val) {
+                    dataPetugas = Object.entries(val).map(([k, v]) => ({ ...v, id: v.id || k }));
+                    simpanKeLocal();
+                    renderSemua();
+                } else {
+                    dataPetugas = [];
+                    simpanKeLocal();
+                    renderSemua();
+                }
+            }, () => updateBadgeKoneksi(false));
+
+            refSettings.on("value", snap => {
+                const val = snap.val();
+                if (val && typeof val === "object") {
+                    pengaturanApp = { ...pengaturanApp, ...val };
+                    simpanKeLocal();
+                    terapkanPengaturanUI();
+                }
+            }, () => {});
+        }
+
+        function terapkanPengaturanUI() {
+            const logoSrc = pengaturanApp.logo || DEFAULT_LOGO_SRC;
+            const judul = pengaturanApp.judul || DEFAULT_JUDUL;
+
+            const sidebarLogo = document.getElementById("sidebar-logo");
+            if (sidebarLogo) sidebarLogo.src = logoSrc;
+
+            document.title = judul;
+            const titleEl = document.getElementById("topbar-title");
+            if (titleEl) titleEl.innerText = judul;
+        }
+
+        // ==================== RENDER SEMUA ====================
+        function renderSemua() {
+            isiDropdownUnit();
+            renderDashboard();
+            renderTabelLog();
+            renderUnitChips();
+            renderTabelPetugas();
+            if (!document.getElementById("modal-kalender-dashboard").classList.contains("hidden")) {
+                renderIsiModalKalender();
+            }
+        }
+
+        function isiDropdownUnit() {
+            const dashUnitSel = document.getElementById("dash-dropdown-unit");
+            const filterSel = document.getElementById("filter-log-unit");
+            const inputPetugasUnitSel = document.getElementById("input-petugas-unit");
+            const modalPetugasUnitSel = document.getElementById("petugas-unit");
+
+            const valDashUnit = dashUnitSel ? dashUnitSel.value : "";
+            const valFilter = filterSel ? filterSel.value : "";
+            const valInputPetugasUnit = inputPetugasUnitSel ? inputPetugasUnitSel.value : "";
+            const valModalPetugasUnit = modalPetugasUnitSel ? modalPetugasUnitSel.value : "";
+
+            const uniqueNames = getUniqueUnitNames();
+            const optsUniqueNames = uniqueNames.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join("");
+            const emptyOpt = `<option value="">-- Belum ada unit terdaftar --</option>`;
+            const placeholderOpt = `<option value="">-- Pilih Unit --</option>`;
+
+            if (dashUnitSel) dashUnitSel.innerHTML = `<option value="">Semua Unit Terdaftar</option>` + optsUniqueNames;
+            if (filterSel) filterSel.innerHTML = `<option value="">Semua Unit</option>` + optsUniqueNames;
+
+            if (inputPetugasUnitSel) {
+                inputPetugasUnitSel.innerHTML = uniqueNames.length ? (placeholderOpt + optsUniqueNames) : emptyOpt;
+            }
+            if (modalPetugasUnitSel) {
+                modalPetugasUnitSel.innerHTML = uniqueNames.length ? (placeholderOpt + optsUniqueNames) : emptyOpt;
+            }
+
+            if (dashUnitSel && valDashUnit && uniqueNames.includes(valDashUnit)) dashUnitSel.value = valDashUnit;
+            if (filterSel && valFilter && uniqueNames.includes(valFilter)) filterSel.value = valFilter;
+
+            if (inputPetugasUnitSel && valInputPetugasUnit && uniqueNames.includes(valInputPetugasUnit)) {
+                inputPetugasUnitSel.value = valInputPetugasUnit;
+            }
+            if (modalPetugasUnitSel && valModalPetugasUnit && uniqueNames.includes(valModalPetugasUnit)) {
+                modalPetugasUnitSel.value = valModalPetugasUnit;
+            }
+        }
+
+        // ==================== KALENDER DASHBOARD RESPONSIF (HANYA UNIT TERDAFTAR) ====================
+        function bukaModalKalender() {
+            const refIso = kalTanggalDipilih || getTodayIso();
+            const parts = refIso.split("-");
+            if (parts.length === 3) {
+                kalTahunAktif = parseInt(parts[0], 10);
+                kalBulanAktif = parseInt(parts[1], 10) - 1;
+                kalTanggalDipilih = refIso;
+            }
+            document.getElementById("modal-kalender-dashboard").classList.remove("hidden");
+            renderIsiModalKalender();
+        }
+
+        function tutupModalKalender() {
+            document.getElementById("modal-kalender-dashboard").classList.add("hidden");
+        }
+
+        function geserBulanKalender(delta) {
+            kalBulanAktif += delta;
+            if (kalBulanAktif < 0) {
+                kalBulanAktif = 11;
+                kalTahunAktif--;
+            } else if (kalBulanAktif > 11) {
+                kalBulanAktif = 0;
+                kalTahunAktif++;
+            }
+            renderIsiModalKalender();
+        }
+
+        function pilihHariIniKalender() {
+            const today = getTodayIso();
+            const d = new Date();
+            kalTahunAktif = d.getFullYear();
+            kalBulanAktif = d.getMonth();
+            kalTanggalDipilih = today;
+            renderIsiModalKalender();
+        }
+
+        function lompatKeTanggalKalender(iso) {
+            if (!iso) return;
+            const parts = iso.split("-");
+            if (parts.length === 3) {
+                kalTahunAktif = parseInt(parts[0], 10);
+                kalBulanAktif = parseInt(parts[1], 10) - 1;
+                kalTanggalDipilih = iso;
+                renderIsiModalKalender();
+            }
+        }
+
+        function pilihTanggalDiKalender(iso) {
+            kalTanggalDipilih = iso;
+            renderIsiModalKalender();
+        }
+
+        function renderIsiModalKalender() {
+            const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            document.getElementById("kal-bulan-tahun").innerText = `${namaBulan[kalBulanAktif]} ${kalTahunAktif}`;
+
+            const inpLompat = document.getElementById("kal-lompat-tanggal");
+            if (inpLompat) inpLompat.value = kalTanggalDipilih;
+
+            const selectedUnit = document.getElementById("dash-dropdown-unit")?.value || "";
+            const registeredUnits = getRegisteredUnits().filter(u =>
+                !selectedUnit || String(u.nama || "").trim().toLowerCase() === selectedUnit.toLowerCase()
+            );
+
+            const activeDates = new Set();
+            dataLogs.forEach(l => {
+                const validSuhu = l.suhu !== null && l.suhu !== "" && !isNaN(Number(l.suhu));
+                if (!validSuhu) return;
+                const cocokUnitTerdaftar = registeredUnits.some(u => isLogMatchesRegisteredUnit(l, u));
+                if (!cocokUnitTerdaftar) return;
+                const key = extractLogDateKey(l.waktu);
+                if (key) activeDates.add(key);
+            });
+
+            const firstDay = new Date(kalTahunAktif, kalBulanAktif, 1).getDay();
+            const daysInMonth = new Date(kalTahunAktif, kalBulanAktif + 1, 0).getDate();
+            const pad = n => String(n).padStart(2, "0");
+            const todayIso = getTodayIso();
+
+            let cellsHtml = "";
+            for (let i = 0; i < firstDay; i++) {
+                cellsHtml += `<div class="h-10 sm:h-11 rounded-xl bg-slate-50/50"></div>`;
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const iso = `${kalTahunAktif}-${pad(kalBulanAktif + 1)}-${pad(day)}`;
+                const hasData = activeDates.has(iso);
+                const isSelected = iso === kalTanggalDipilih;
+                const isToday = iso === todayIso;
+
+                let btnCls = "bg-white hover:bg-sky-50 text-slate-700 border-slate-200";
+                if (isSelected) {
+                    btnCls = "bg-sky-700 text-white border-sky-700 shadow-sm";
+                } else if (isToday) {
+                    btnCls = "bg-cyan-50 text-sky-800 border-cyan-300 font-black";
+                }
+
+                const dotHtml = hasData
+                    ? `<span class="w-1.5 h-1.5 rounded-full ${isSelected ? "bg-white" : "bg-sky-500"}"></span>`
+                    : `<span class="w-1.5 h-1.5"></span>`;
+
+                cellsHtml += `
+                    <button type="button" onclick='pilihTanggalDiKalender(${safeJsonAttr(iso)})'
+                        class="h-10 sm:h-11 rounded-xl border flex flex-col items-center justify-center gap-0.5 text-xs font-bold transition-all cursor-pointer ${btnCls}">
+                        <span>${day}</span>
+                        ${dotHtml}
+                    </button>
+                `;
+            }
+
+            document.getElementById("kal-grid-hari").innerHTML = cellsHtml;
+            document.getElementById("kal-detail-judul").innerText = formatTanggalLengkap(kalTanggalDipilih);
+
+            const summaryList = getPendinginSummaries(selectedUnit, kalTanggalDipilih).filter(item => item.logs.length > 0);
+
+            document.getElementById("kal-detail-count").innerText = `${summaryList.length} Pendingin`;
+
+            const listEl = document.getElementById("kal-detail-list");
+            if (summaryList.length === 0) {
+                listEl.innerHTML = `
+                    <div class="py-10 text-center text-xs text-slate-400">
+                        <i class="fa-solid fa-calendar-xmark text-2xl text-slate-300 mb-2 block"></i>
+                        Tidak ada rekaman suhu unit terdaftar pada tanggal ini.
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = summaryList.map(item => `
+                <div class="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs space-y-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="w-2.5 h-2.5 rounded-full ${item.color.dotClass} shrink-0"></span>
+                        <div class="min-w-0">
+                            <p class="text-xs font-black text-slate-900 uppercase truncate">${esc(item.nama)}</p>
+                            <p class="text-[11px] font-bold truncate" style="color:${item.color.hex};">${esc(item.jenis)}</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                        <div class="rounded-lg bg-sky-50 border border-sky-100 px-2.5 py-2 text-center">
+                            <p class="text-[10px] font-bold text-slate-500 uppercase">Suhu Terendah</p>
+                            <p class="text-sm font-black text-sky-700 mt-0.5">${formatSuhu(item.suhuTerendah)}</p>
+                        </div>
+                        <div class="rounded-lg bg-rose-50 border border-rose-100 px-2.5 py-2 text-center">
+                            <p class="text-[10px] font-bold text-slate-500 uppercase">Suhu Tertinggi</p>
+                            <p class="text-sm font-black text-rose-600 mt-0.5">${formatSuhu(item.suhuTertinggi)}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        // ==================== RENDER DASHBOARD ====================
+        function renderDashboard() {
+            const selectedUnit = document.getElementById("dash-dropdown-unit")?.value || "";
+            const items = getPendinginSummaries(selectedUnit, "");
+
+            renderKotakPantauanSuhu(items);
+            renderKeteranganMinMax(items);
+            renderGrafikPerJenisPendingin(items, selectedUnit);
+        }
+
+        function renderKotakPantauanSuhu(items) {
+            const grid = document.getElementById("grid-pantauan-suhu");
+            const countEl = document.getElementById("dash-unit-count");
+            if (!grid) return;
+
+            if (countEl) countEl.innerText = `${items.length} Pendingin`;
+
+            if (items.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-10 text-center text-xs text-slate-400">
+                        Belum ada unit dan jenis pendingin terdaftar. Silakan tambahkan di menu <b>Petugas dan Unit</b>.
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = items.map(item => {
+                const c = item.color;
+                const suhuUtama = item.suhuTerakhir !== null ? formatSuhu(item.suhuTerakhir) : "-";
+                const suhuMin = item.suhuTerendah !== null ? formatSuhu(item.suhuTerendah) : "-";
+                const suhuMax = item.suhuTertinggi !== null ? formatSuhu(item.suhuTertinggi) : "-";
+
+                return `
+                    <div class="rounded-2xl border p-4 shadow-md flex flex-col justify-between gap-3 transition-transform hover:-translate-y-0.5 ${c.cardCls}">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <h4 class="text-base font-black tracking-tight uppercase leading-tight truncate">${esc(item.nama)}</h4>
+                                <p class="text-xs font-semibold ${c.subTextCls} mt-0.5 truncate">${esc(item.jenis)}</p>
+                            </div>
+                            <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${c.pillCls}">
+                                ${item.logs.length} data
+                            </span>
+                        </div>
+
+                        <div class="py-1">
+                            <p class="text-[10px] font-bold uppercase tracking-wider ${c.subTextCls}">Suhu Terakhir Diinput</p>
+                            <p class="text-3xl font-black tracking-tight mt-0.5">${suhuUtama}</p>
+                        </div>
+
+                        <div class="rounded-xl border px-3 py-2 text-[11px] space-y-1.5 ${c.boxMinMaxCls}">
+                            <div class="flex items-center justify-between gap-2">
+                                <span>Terendah: <b>${suhuMin}</b></span>
+                                <span>Tertinggi: <b>${suhuMax}</b></span>
+                            </div>
+                            <div class="border-t border-white/15 pt-1 text-[10px] opacity-90 flex items-center justify-between gap-2">
+                                <span>Update Terakhir</span>
+                                <span class="shrink-0">${formatWaktu(item.waktuTerakhir)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function renderKeteranganMinMax(items) {
+            const wrap = document.getElementById("summary-minmax-unit");
+            if (!wrap) return;
+
+            if (items.length === 0) {
+                wrap.innerHTML = `<p class="text-xs text-slate-400 col-span-full">Belum ada unit terdaftar untuk ditampilkan.</p>`;
+                return;
+            }
+
+            const grouped = [];
+            const map = new Map();
+            items.forEach(item => {
+                const key = item.nama.toLowerCase();
+                if (!map.has(key)) {
+                    const obj = { nama: item.nama, color: item.color, list: [] };
+                    map.set(key, obj);
+                    grouped.push(obj);
+                }
+                map.get(key).list.push(item);
+            });
+
+            wrap.innerHTML = grouped.map(grp => {
+                const rowsHtml = grp.list.map(j => {
+                    const minStr = j.suhuTerendah !== null ? formatSuhu(j.suhuTerendah) : "-";
+                    const maxStr = j.suhuTertinggi !== null ? formatSuhu(j.suhuTertinggi) : "-";
+                    return `
+                        <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-100 last:border-b-0 text-[11px]">
+                            <span class="font-bold text-slate-700">${esc(j.jenis)}</span>
+                            <span class="text-slate-600 text-right">
+                                Terendah <b class="text-sky-700">${minStr}</b>
+                                <span class="text-slate-300 mx-1">&bull;</span>
+                                Tertinggi <b class="text-rose-600">${maxStr}</b>
+                            </span>
+                        </div>
+                    `;
+                }).join("");
+
+                return `
+                    <div class="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
+                        <div class="flex items-center gap-2 mb-2 pb-1.5 border-b border-slate-100">
+                            <span class="w-2.5 h-2.5 rounded-full ${grp.color.dotClass} shrink-0"></span>
+                            <span class="text-xs font-black text-slate-900 uppercase">Unit ${esc(grp.nama)}</span>
+                        </div>
+                        <div>${rowsHtml}</div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function buatSvgGrafikSingle(item) {
+            const logsUnit = item.logs.slice(-12);
+            const lineColor = item.color.hex;
+
+            if (logsUnit.length === 0) {
+                return `<div class="py-10 text-center text-xs text-slate-400">Belum ada riwayat suhu untuk ${esc(item.nama)} - ${esc(item.jenis)}.</div>`;
+            }
+
+            const W = 560;
+            const H = 220;
+            const padL = 46;
+            const padR = 22;
+            const padT = 28;
+            const padB = 38;
+            const plotW = W - padL - padR;
+            const plotH = H - padT - padB;
+
+            const suhuVals = logsUnit.map(l => Number(l.suhu));
+            const minAll = Math.min(...suhuVals) - 2;
+            const maxAll = Math.max(...suhuVals) + 2;
+            const range = Math.max(1, maxAll - minAll);
+
+            const toX = (idx) => logsUnit.length === 1
+                ? padL + plotW / 2
+                : padL + (idx / (logsUnit.length - 1)) * plotW;
+            const toY = (val) => padT + ((maxAll - val) / range) * plotH;
+
+            const points = logsUnit.map((l, idx) => ({
+                x: toX(idx),
+                y: toY(Number(l.suhu)),
+                suhu: Number(l.suhu),
+                waktu: l.waktu
+            }));
+
+            const polylinePoints = points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+
+            let gridLines = "";
+            for (let i = 0; i <= 4; i++) {
+                const v = minAll + (range * i) / 4;
+                const y = toY(v);
+                gridLines += `
+                    <line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}" stroke="#e2e8f0" stroke-dasharray="3,3" />
+                    <text x="${padL - 7}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" font-size="9.5" fill="#64748b">${v.toFixed(1)}°</text>
+                `;
+            }
+
+            const dotsHtml = points.map(p => {
+                const dt = new Date(p.waktu);
+                const lbl = isNaN(dt.getTime()) ? "-" : dt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+                return `
+                    <g>
+                        <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4.5" fill="${lineColor}" stroke="#ffffff" stroke-width="2" />
+                        <text x="${p.x.toFixed(1)}" y="${(p.y - 9).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="700" fill="${lineColor}">
+                            ${p.suhu.toFixed(1)}°
+                        </text>
+                        <text x="${p.x.toFixed(1)}" y="${H - 10}" text-anchor="middle" font-size="9" fill="#64748b">
+                            ${esc(lbl)}
+                        </text>
+                    </g>
+                `;
+            }).join("");
+
+            return `
+                <svg viewBox="0 0 ${W} ${H}" class="w-full h-auto select-none">
+                    ${gridLines}
+                    <polyline fill="none" stroke="${lineColor}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" points="${polylinePoints}" />
+                    ${dotsHtml}
+                </svg>
+            `;
+        }
+
+        function renderGrafikPerJenisPendingin(items, selectedUnit) {
+            const container = document.getElementById("container-grafik-suhu");
+            const countEl = document.getElementById("dash-chart-count");
+            const subEl = document.getElementById("chart-subtitle");
+            if (!container) return;
+
+            if (countEl) countEl.innerText = `${items.length} Grafik`;
+            if (subEl) {
+                subEl.innerText = selectedUnit
+                    ? `Menampilkan ${items.length} grafik jenis pendingin pada unit terdaftar ${selectedUnit}`
+                    : `Menampilkan ${items.length} grafik untuk tiap jenis pendingin di semua unit terdaftar`;
+            }
+
+            if (items.length === 0) {
+                container.innerHTML = `<div class="col-span-full py-10 text-center text-xs text-slate-400">Belum ada jenis pendingin terdaftar.</div>`;
+                return;
+            }
+
+            container.innerHTML = items.map(item => {
+                const c = item.color;
+                const lastStr = item.suhuTerakhir !== null ? formatSuhu(item.suhuTerakhir) : "-";
+                const minStr = item.suhuTerendah !== null ? formatSuhu(item.suhuTerendah) : "-";
+                const maxStr = item.suhuTertinggi !== null ? formatSuhu(item.suhuTertinggi) : "-";
+
+                return `
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs space-y-2.5 min-w-0">
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="w-3 h-3 rounded-full ${c.dotClass} shrink-0"></span>
+                                <div class="min-w-0">
+                                    <p class="text-xs font-black text-slate-900 uppercase leading-tight truncate">${esc(item.nama)}</p>
+                                    <p class="text-[11px] font-bold truncate" style="color:${c.hex};">${esc(item.jenis)}</p>
+                                </div>
+                            </div>
+                            <div class="text-right text-[10px] text-slate-500 shrink-0">
+                                <span class="inline-block px-2 py-0.5 rounded-full border font-bold ${c.badgeCls}">
+                                    Terakhir: ${lastStr}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="w-full overflow-hidden">
+                            ${buatSvgGrafikSingle(item)}
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600 pt-1 border-t border-slate-100">
+                            <span>Suhu Terendah: <b class="text-sky-700">${minStr}</b></span>
+                            <span>Suhu Tertinggi: <b class="text-rose-600">${maxStr}</b></span>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        // ==================== LAPORAN PETUGAS ====================
+        function getFilteredLogs() {
+            const unitFilter = document.getElementById("filter-log-unit").value;
+            const tanggalFilter = document.getElementById("filter-log-tanggal").value;
+            const kueri = (document.getElementById("cari-log").value || "").toLowerCase();
+
+            return dataLogs.filter(item => {
+                const unitNamaLog = getLogUnitName(item);
+                if (!isPetugasTerdaftarPadaUnit(item.petugas, unitNamaLog)) return false;
+
+                const jenisLog = getLogJenisName(item);
+                const matchUnit = !unitFilter || unitNamaLog.toLowerCase() === unitFilter.toLowerCase();
+                const matchTanggal = !tanggalFilter || String(item.waktu || "").startsWith(tanggalFilter);
+                const teks = `${unitNamaLog} ${jenisLog} ${item.petugas || ""}`.toLowerCase();
+                return matchUnit && matchTanggal && teks.includes(kueri);
+            });
+        }
+
+        function resetPageDanRenderLog() {
+            logPage = 1;
+            renderTabelLog();
+        }
+
+        function gantiHalamanLog(page) {
+            logPage = page;
+            renderTabelLog();
+        }
+
+        function renderTabelLog() {
+            const filtered = getFilteredLogs();
+            const tbody = document.getElementById("tbody-log-suhu");
+            const pagEl = document.getElementById("pagination-log-suhu");
+            const btnHapusSemua = document.getElementById("btn-hapus-semua-log");
+
+            document.getElementById("log-count-info").innerText = `${filtered.length} laporan petugas ditemukan`;
+            if (btnHapusSemua) {
+                btnHapusSemua.disabled = filtered.length === 0;
+                btnHapusSemua.classList.toggle("opacity-50", filtered.length === 0);
+                btnHapusSemua.classList.toggle("cursor-not-allowed", filtered.length === 0);
+            }
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="border border-slate-300 text-center py-8 text-slate-400">
+                            Tidak ada laporan petugas yang ditemukan.
+                        </td>
+                    </tr>
+                `;
+                pagEl.classList.add("hidden");
+                pagEl.innerHTML = "";
+                return;
+            }
+
+            const total = filtered.length;
+            const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
+            if (logPage > totalPages) logPage = totalPages;
+            if (logPage < 1) logPage = 1;
+
+            const startIdx = (logPage - 1) * ITEMS_PER_PAGE;
+            const endIdx = Math.min(startIdx + ITEMS_PER_PAGE, total);
+            const paged = filtered.slice(startIdx, endIdx);
+
+            tbody.innerHTML = paged.map((item, idx) => {
+                const nomor = startIdx + idx + 1;
+                const unitNamaLog = getLogUnitName(item);
+                const jenisLog = getLogJenisName(item);
+                const waktuSplit = formatWaktuSplit(item.waktu);
+
+                const judulPopup = `${unitNamaLog}${jenisLog && jenisLog !== "-" ? ` (${jenisLog})` : ""}`;
+                const subinfoPopup = `${item.petugas || "-"} • ${Number(item.suhu).toFixed(1)} °C • ${formatWaktu(item.waktu)}`;
+
+                const avatarHtml = item.foto
+                    ? `<img src="${esc(item.foto)}" alt="Foto"
+                            onclick='bukaPopupFoto(${safeJsonAttr(item.foto)}, ${safeJsonAttr(judulPopup)}, ${safeJsonAttr(subinfoPopup)})'
+                            title="Klik untuk memperbesar foto"
+                            class="w-7 h-7 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-sky-200 hover:border-sky-500 hover:scale-110 transition-all cursor-pointer mx-auto bg-white shadow-sm">`
+                    : `<div title="Tidak ada foto"
+                            class="w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-400 mx-auto">
+                            <i class="fa-regular fa-image text-[10px] sm:text-xs"></i>
+                       </div>`;
+
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="border border-slate-300 px-1 sm:px-2.5 py-2 sm:py-3 text-center font-bold text-slate-600 break-words">${nomor}</td>
+                        <td class="border border-slate-300 px-1 sm:px-2.5 py-2 sm:py-3 font-medium text-slate-700 leading-tight break-words">
+                            <span class="block font-semibold text-slate-800">${esc(waktuSplit.tgl)}</span>
+                            <span class="block text-[9px] sm:text-[11px] text-slate-500 mt-0.5">${esc(waktuSplit.jam)}</span>
+                        </td>
+                        <td class="border border-slate-300 px-1 sm:px-2.5 py-2 sm:py-3 font-bold text-slate-800 leading-tight break-words">${esc(item.petugas || "-")}</td>
+                        <td class="border border-slate-300 px-1.5 sm:px-3 py-2 sm:py-3 leading-tight break-words">
+                            <p class="font-bold text-slate-900">${esc(unitNamaLog)}</p>
+                            <p class="text-[9px] sm:text-[11px] font-semibold text-sky-700 mt-0.5">${esc(jenisLog)}</p>
+                        </td>
+                        <td class="border border-slate-300 px-1 sm:px-2 py-2 sm:py-3 text-center font-black text-sky-700 leading-tight break-words">
+                            ${Number(item.suhu).toFixed(1)}<span class="text-[9px] sm:text-xs">°C</span>
+                        </td>
+                        <td class="border border-slate-300 px-1 sm:px-2 py-2 sm:py-3 text-center">${avatarHtml}</td>
+                        <td class="border border-slate-300 px-1 sm:px-2 py-2 sm:py-3 text-center">
+                            <button type="button" onclick='hapusLog(${safeJsonAttr(item.id)})' title="Hapus laporan ini"
+                                class="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 inline-flex items-center justify-center transition-colors cursor-pointer mx-auto">
+                                <i class="fa-solid fa-trash-can text-[10px] sm:text-xs"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+
+            const pages = [];
+            if (totalPages <= 5) {
+                for (let i = 1; i <= totalPages; i++) pages.push(i);
+            } else {
+                pages.push(1);
+                if (logPage > 3) pages.push("...");
+                for (let i = Math.max(2, logPage - 1); i <= Math.min(totalPages - 1, logPage + 1); i++) pages.push(i);
+                if (logPage < totalPages - 2) pages.push("...");
+                pages.push(totalPages);
+            }
+
+            pagEl.className = "px-3 sm:px-4 py-3 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs";
+            pagEl.innerHTML = `
+                <p class="text-[11px] text-slate-500 text-center sm:text-left">
+                    Menampilkan <b class="text-slate-700">${startIdx + 1}–${endIdx}</b> dari <b class="text-slate-700">${total}</b> laporan
+                </p>
+                <div class="flex items-center gap-1 flex-wrap justify-center">
+                    <button type="button" onclick="gantiHalamanLog(${logPage - 1})" ${logPage <= 1 ? "disabled" : ""}
+                        class="h-[30px] px-2.5 rounded-lg bg-white border border-slate-200 text-slate-600 font-bold hover:bg-slate-100 disabled:opacity-40 cursor-pointer">
+                        <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                    </button>
+                    ${pages.map(p => p === "..."
+                        ? `<span class="px-2 text-slate-400">...</span>`
+                        : `<button type="button" onclick="gantiHalamanLog(${p})" class="min-w-[30px] h-[30px] px-2 rounded-lg text-xs font-bold cursor-pointer ${
+                            p === logPage ? "bg-sky-700 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                        }">${p}</button>`
+                    ).join("")}
+                    <button type="button" onclick="gantiHalamanLog(${logPage + 1})" ${logPage >= totalPages ? "disabled" : ""}
+                        class="h-[30px] px-2.5 rounded-lg bg-white border border-slate-200 text-slate-600 font-bold hover:bg-slate-100 disabled:opacity-40 cursor-pointer">
+                        <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+        function hapusLog(id) {
+            const target = dataLogs.find(x => x.id === id);
+            if (!target) return;
+
+            const unitNama = getLogUnitName(target);
+            const jenisNama = getLogJenisName(target);
+            const infoWaktu = formatWaktu(target.waktu);
+            if (!confirm(`Hapus laporan petugas "${target.petugas || "-"}" (${unitNama} - ${jenisNama}, ${Number(target.suhu).toFixed(1)} °C, ${infoWaktu})?`)) {
+                return;
+            }
+
+            dataLogs = dataLogs.filter(x => x.id !== id);
+            sinkronkanSuhuTerkiniUnitDariLogs();
+            simpanKeLocal();
+
+            if (database) {
+                database.ref("pantauan_suhu_pendingin/logs/" + id).remove().catch(() => {});
+            }
+
+            renderSemua();
+            tampilkanToast("1 laporan petugas berhasil dihapus.");
+        }
+
+        function hapusSemuaLog() {
+            const filtered = getFilteredLogs();
+            if (filtered.length === 0) {
+                alert("Tidak ada laporan petugas yang dapat dihapus.");
+                return;
+            }
+
+            const sedangFilter = filtered.length < dataLogs.length;
+            const pesanKonfirmasi = sedangFilter
+                ? `Hapus ${filtered.length} laporan petugas sesuai filter yang sedang tampil?\nTindakan ini tidak dapat dibatalkan.`
+                : `Hapus SEMUA (${dataLogs.length}) laporan petugas?\nTindakan ini tidak dapat dibatalkan.`;
+
+            if (!confirm(pesanKonfirmasi)) return;
+
+            if (sedangFilter) {
+                const hapusSet = new Set(filtered.map(x => x.id));
+                dataLogs = dataLogs.filter(x => !hapusSet.has(x.id));
+
+                sinkronkanSuhuTerkiniUnitDariLogs();
+                simpanKeLocal();
+
+                if (database) {
+                    const updates = {};
+                    hapusSet.forEach(logId => { updates[logId] = null; });
+                    database.ref("pantauan_suhu_pendingin/logs").update(updates).catch(() => {});
+                }
+
+                logPage = 1;
+                renderSemua();
+                tampilkanToast(`${filtered.length} laporan petugas terfilter berhasil dihapus.`);
+            } else {
+                const totalHapus = dataLogs.length;
+                dataLogs = [];
+                sinkronkanSuhuTerkiniUnitDariLogs();
+                simpanKeLocal();
+
+                if (database) {
+                    database.ref("pantauan_suhu_pendingin/logs").remove().catch(() => {});
+                }
+
+                logPage = 1;
+                renderSemua();
+                tampilkanToast(`Semua (${totalHapus}) laporan petugas berhasil dihapus.`);
+            }
+        }
+
+        // ==================== POP-UP AVATAR FOTO ====================
+        function bukaPopupFoto(src, judul, subinfo) {
+            if (!src) return;
+            document.getElementById("popup-img").src = src;
+            document.getElementById("popup-judul").innerText = judul || "Foto Bukti Suhu";
+            document.getElementById("popup-subinfo").innerText = subinfo || "";
+            document.getElementById("modal-popup-foto").classList.remove("hidden");
+        }
+
+        function tutupPopupFoto() {
+            document.getElementById("modal-popup-foto").classList.add("hidden");
+            document.getElementById("popup-img").src = "";
+        }
+
+        // ==================== PETUGAS DAN UNIT ====================
+        function renderUnitChips() {
+            const wrap = document.getElementById("list-unit-chips");
+            if (!wrap) return;
+
+            const units = getRegisteredUnits();
+            if (units.length === 0) {
+                wrap.innerHTML = `<span class="text-[11px] text-slate-400">Belum ada unit pendingin terdaftar.</span>`;
+                return;
+            }
+
+            wrap.innerHTML = units.map(u => `
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-sky-200 text-[11px] font-semibold text-slate-700 shadow-2xs">
+                    <span class="text-sky-700 font-bold">${esc(u.nama)}</span>
+                    <span class="text-slate-400">&bull;</span>
+                    <span>${esc(u.jenis)}</span>
+                    <button type="button" onclick='hapusUnitItem(${safeJsonAttr(u.id)})' title="Hapus Unit"
+                        class="ml-0.5 text-rose-500 hover:text-rose-700 cursor-pointer">
+                        <i class="fa-solid fa-xmark text-[11px]"></i>
+                    </button>
+                </span>
+            `).join("");
+        }
+
+        function getFilteredPetugas() {
+            const kueri = (document.getElementById("cari-petugas").value || "").toLowerCase();
+            return dataPetugas.filter(p => {
+                const unitNama = getNamaUnitPetugas(p);
+                const jenisList = getJenisListByUnitName(unitNama);
+                const teks = `${p.nama || ""} ${unitNama} ${jenisList.join(" ")}`.toLowerCase();
+                return teks.includes(kueri);
+            });
+        }
+
+        function getPetugasGroupedByUnit() {
+            const kueri = (document.getElementById("cari-petugas")?.value || "").trim().toLowerCase();
+            const filtered = getFilteredPetugas();
+
+            const groupsMap = new Map();
+            const groupsList = [];
+
+            const ensureGroup = (unitName) => {
+                const clean = String(unitName || "-").trim() || "-";
+                const key = clean.toLowerCase();
+                if (!groupsMap.has(key)) {
+                    const obj = {
+                        unitNama: clean,
+                        color: getColorForUnitName(clean),
+                        jenisList: getJenisListByUnitName(clean),
+                        petugas: []
+                    };
+                    groupsMap.set(key, obj);
+                    groupsList.push(obj);
+                }
+                return groupsMap.get(key);
+            };
+
+            getUniqueUnitNames().forEach(uName => {
+                const jenisList = getJenisListByUnitName(uName);
+                const matchSearch = !kueri || `${uName} ${jenisList.join(" ")}`.toLowerCase().includes(kueri);
+                const hasFilteredPetugas = filtered.some(p => getNamaUnitPetugas(p).toLowerCase() === uName.toLowerCase());
+                if (matchSearch || hasFilteredPetugas) {
+                    ensureGroup(uName);
+                }
+            });
+
+            filtered.forEach(p => {
+                const uNama = getNamaUnitPetugas(p);
+                if (isUnitTerdaftar(uNama)) {
+                    ensureGroup(uNama).petugas.push(p);
+                }
+            });
+
+            return groupsList;
+        }
+
+        function renderTabelPetugas() {
+            const tbody = document.getElementById("tbody-petugas");
+            const registeredUnits = getRegisteredUnits();
+            const groups = getPetugasGroupedByUnit();
+            const totalPetugasTerdaftar = groups.reduce((acc, g) => acc + g.petugas.length, 0);
+
+            document.getElementById("petugas-count-info").innerText =
+                `${totalPetugasTerdaftar} petugas & ${registeredUnits.length} unit pendingin terdaftar`;
+
+            if (groups.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="border border-slate-400 text-center py-8 text-slate-400">
+                            Belum ada data petugas atau unit terdaftar.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let html = "";
+            let nomorUrut = 1;
+
+            groups.forEach(grp => {
+                const jenisSummary = grp.jenisList.length > 0 ? grp.jenisList.join(", ") : "-";
+
+                html += `
+                    <tr class="bg-slate-100">
+                        <td colspan="5" class="border border-slate-400 px-3.5 py-2.5">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-3 h-3 rounded-full ${grp.color.dotClass} shrink-0"></span>
+                                    <span class="font-black text-slate-900 uppercase text-xs">Unit: ${esc(grp.unitNama)}</span>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${grp.color.badgeCls}">
+                                        ${grp.petugas.length} Petugas
+                                    </span>
+                                </div>
+                                <span class="text-[11px] font-semibold text-slate-600">
+                                    Jenis Pendingin: <b class="text-slate-800">${esc(jenisSummary)}</b>
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+
+                if (grp.petugas.length === 0) {
+                    html += `
+                        <tr>
+                            <td colspan="5" class="border border-slate-400 px-4 py-3 text-center text-[11px] text-slate-400 italic">
+                                Belum ada petugas terdaftar pada unit ${esc(grp.unitNama)}.
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    grp.petugas.forEach(p => {
+                        const jenisHtml = grp.jenisList.length > 0
+                            ? grp.jenisList.map((j, i) => `<div class="leading-relaxed">${i + 1}. ${esc(j)}</div>`).join("")
+                            : `<span class="text-slate-400">-</span>`;
+
+                        html += `
+                            <tr class="hover:bg-slate-50 transition-colors align-top">
+                                <td class="border border-slate-400 px-3 py-3 text-center font-bold text-slate-600">${nomorUrut++}</td>
+                                <td class="border border-slate-400 px-4 py-3 font-bold text-slate-900">${esc(p.nama)}</td>
+                                <td class="border border-slate-400 px-4 py-3 font-semibold" style="color:${grp.color.hex};">${esc(grp.unitNama)}</td>
+                                <td class="border border-slate-400 px-4 py-3 font-medium text-slate-700">${jenisHtml}</td>
+                                <td class="border border-slate-400 px-3 py-3 text-center whitespace-nowrap">
+                                    <button type="button" onclick='editPetugas(${safeJsonAttr(p.id)})' title="Edit Petugas"
+                                        class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 inline-flex items-center justify-center mr-1 cursor-pointer">
+                                        <i class="fa-solid fa-pen-to-square text-[11px]"></i>
+                                    </button>
+                                    <button type="button" onclick='hapusPetugas(${safeJsonAttr(p.id)})' title="Hapus Petugas"
+                                        class="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 inline-flex items-center justify-center cursor-pointer">
+                                        <i class="fa-solid fa-trash-can text-[11px]"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function tambahPetugasInline(event) {
+            event.preventDefault();
+            const nama = document.getElementById("input-petugas-nama").value.trim();
+            const unitNama = document.getElementById("input-petugas-unit").value.trim();
+
+            if (!nama || !unitNama) {
+                alert("Silakan isi Nama Petugas dan pilih Unit terlebih dahulu.");
+                return;
+            }
+
+            const id = "ptg_" + Date.now();
+            const obj = {
+                id,
+                nama,
+                unit: unitNama
+            };
+
+            dataPetugas.push(obj);
+            simpanKeLocal();
+            if (database) {
+                database.ref("pantauan_suhu_pendingin/petugas/" + id).set(obj).catch(() => {});
+            }
+
+            document.getElementById("form-tambah-petugas").reset();
+            renderSemua();
+            tampilkanToast(`Petugas "${nama}" (${unitNama}) ditambahkan.`);
+        }
+
+        function tambahUnitInline(event) {
+            event.preventDefault();
+            const nama = document.getElementById("input-unit-nama").value.trim();
+            const jenis = document.getElementById("input-unit-jenis").value.trim();
+
+            if (!nama || !jenis) {
+                alert("Silakan isi Unit dan Jenis Pendingin terlebih dahulu.");
+                return;
+            }
+
+            const duplikat = getRegisteredUnits().some(u =>
+                String(u.nama || "").trim().toLowerCase() === nama.toLowerCase() &&
+                String(u.jenis || "").trim().toLowerCase() === jenis.toLowerCase()
+            );
+            if (duplikat) {
+                alert(`Unit "${nama}" dengan jenis "${jenis}" sudah terdaftar.`);
+                return;
+            }
+
+            const id = "unit_" + Date.now();
+            const unitObj = {
+                id,
+                nama,
+                jenis,
+                kondisi: "Aktif",
+                suhu_terkini: null,
+                petugas_terakhir: "",
+                updated_at: getNowDateTimeLocal()
+            };
+
+            dataUnits.push(unitObj);
+            simpanKeLocal();
+            if (database) {
+                database.ref("pantauan_suhu_pendingin/units/" + id).set(unitObj).catch(() => {});
+            }
+
+            document.getElementById("form-tambah-unit").reset();
+            renderSemua();
+            tampilkanToast(`Unit "${nama}" (${jenis}) berhasil ditambahkan.`);
+        }
+
+        function hapusUnitItem(id) {
+            const u = dataUnits.find(x => x.id === id);
+            if (!u) return;
+            if (!confirm(`Hapus unit "${u.nama} (${u.jenis})"?`)) return;
+
+            dataUnits = dataUnits.filter(x => x.id !== id);
+            simpanKeLocal();
+            if (database) {
+                database.ref("pantauan_suhu_pendingin/units/" + id).remove().catch(() => {});
+            }
+            renderSemua();
+            tampilkanToast(`Unit "${u.nama} (${u.jenis})" dihapus.`);
+        }
+
+        function editPetugas(id) {
+            const p = dataPetugas.find(x => x.id === id);
+            if (!p) return;
+            isiDropdownUnit();
+            document.getElementById("petugas-id").value = p.id;
+            document.getElementById("petugas-nama").value = p.nama || "";
+
+            const unitNama = getNamaUnitPetugas(p);
+            const unitSel = document.getElementById("petugas-unit");
+            if (unitNama && Array.from(unitSel.options).some(o => o.value === unitNama)) {
+                unitSel.value = unitNama;
+            }
+
+            document.getElementById("modal-petugas").classList.remove("hidden");
+        }
+
+        function tutupModalPetugas() {
+            document.getElementById("modal-petugas").classList.add("hidden");
+        }
+
+        function simpanEditPetugas(event) {
+            event.preventDefault();
+            const id = document.getElementById("petugas-id").value;
+            const nama = document.getElementById("petugas-nama").value.trim();
+            const unitNama = document.getElementById("petugas-unit").value.trim();
+
+            if (!id || !nama || !unitNama) return;
+
+            const obj = {
+                id,
+                nama,
+                unit: unitNama
+            };
+
+            const idx = dataPetugas.findIndex(x => x.id === id);
+            if (idx !== -1) dataPetugas[idx] = obj;
+
+            simpanKeLocal();
+            if (database) {
+                database.ref("pantauan_suhu_pendingin/petugas/" + id).set(obj).catch(() => {});
+            }
+
+            tutupModalPetugas();
+            renderSemua();
+            tampilkanToast(`Data petugas "${nama}" diperbarui.`);
+        }
+
+        function hapusPetugas(id) {
+            const p = dataPetugas.find(x => x.id === id);
+            if (!p) return;
+            if (!confirm(`Hapus petugas "${p.nama}" dari daftar?`)) return;
+
+            dataPetugas = dataPetugas.filter(x => x.id !== id);
+            simpanKeLocal();
+            if (database) {
+                database.ref("pantauan_suhu_pendingin/petugas/" + id).remove().catch(() => {});
+            }
+            renderSemua();
+        }
+
+        // ==================== EXPORT CSV & CETAK PDF PER MENU ====================
+        function exportCSVLogSuhu() {
+            const list = getFilteredLogs();
+            if (list.length === 0) {
+                alert("Tidak ada data laporan petugas untuk diekspor.");
+                return;
+            }
+            const headers = ["No", "Waktu Pantau", "Nama Petugas", "Unit", "Jenis Pendingin", "Suhu (C)"];
+            const escapeCSV = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+
+            const rows = list.map((item, i) => [
+                i + 1,
+                formatWaktu(item.waktu),
+                item.petugas || "-",
+                getLogUnitName(item),
+                getLogJenisName(item),
+                item.suhu
+            ].map(escapeCSV).join(","));
+
+            const csvContent = "\uFEFF" + [headers.map(escapeCSV).join(","), ...rows].join("\n");
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `laporan-suhu-uptd-rph-${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function buatPrintHeaderHTML(subjudul, infoKanan) {
+            const tglCetak = new Date().toLocaleString("id-ID", {
+                day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit"
+            });
+            const logoSrc = pengaturanApp.logo || DEFAULT_LOGO_SRC;
+            const judul = pengaturanApp.judul || DEFAULT_JUDUL;
+
+            return `
+                <div class="print-header">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <img src="${esc(logoSrc)}" alt="Logo" style="width:42px; height:42px; border-radius:8px; object-fit:cover; border:1px solid #cbd5e1;">
+                        <div>
+                            <div style="font-size:12pt; font-weight:900; color:#0369a1; text-transform:uppercase;">
+                                ${esc(judul)}
+                            </div>
+                            <div style="font-size:9pt; font-weight:600; color:#334155; margin-top:2px;">
+                                ${esc(subjudul)}
+                            </div>
+                        </div>
+                    </div>
+                    <div style="text-align:right; font-size:8pt; color:#475569;">
+                        <div>Dicetak: <b>${esc(tglCetak)}</b></div>
+                        <div>${infoKanan}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function cetakPDFMenu(targetMenu) {
+            const menuCetak = targetMenu || menuAktif || "dashboard";
+            const printEl = document.getElementById("print-area");
+
+            if (menuCetak === "dashboard") {
+                const selectedUnit = document.getElementById("dash-dropdown-unit")?.value || "";
+                const items = getPendinginSummaries(selectedUnit, "");
+
+                const cardsHtml = items.map(item => `
+                    <div class="print-card" style="background:${item.color.hexBg}; border:1.5px solid ${item.color.hexBorder};">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <div>
+                                <div style="font-size:10pt; font-weight:900; color:${item.color.hexText}; text-transform:uppercase;">${esc(item.nama)}</div>
+                                <div style="font-size:8.5pt; font-weight:700; color:#334155;">${esc(item.jenis)}</div>
+                            </div>
+                            <div style="font-size:13pt; font-weight:900; color:${item.color.hexText};">
+                                ${item.suhuTerakhir !== null ? formatSuhu(item.suhuTerakhir) : "-"}
+                            </div>
+                        </div>
+                        <div style="margin-top:6px; padding-top:5px; border-top:1px solid ${item.color.hexBorder}; font-size:7.5pt; color:#334155; display:flex; justify-content:space-between;">
+                            <span>Terendah: <b>${item.suhuTerendah !== null ? formatSuhu(item.suhuTerendah) : "-"}</b></span>
+                            <span>Tertinggi: <b>${item.suhuTertinggi !== null ? formatSuhu(item.suhuTertinggi) : "-"}</b></span>
+                        </div>
+                    </div>
+                `).join("") || `<p style="font-size:8.5pt; color:#64748b;">Belum ada unit pendingin terdaftar.</p>`;
+
+                const tableRows = items.map((item, idx) => `
+                    <tr>
+                        <td style="text-align:center;">${idx + 1}</td>
+                        <td><b>${esc(item.nama)}</b></td>
+                        <td>${esc(item.jenis)}</td>
+                        <td style="text-align:center; font-weight:900; color:${item.color.hexText};">
+                            ${item.suhuTerakhir !== null ? formatSuhu(item.suhuTerakhir) : "-"}
+                        </td>
+                        <td style="text-align:center;">${item.suhuTerendah !== null ? formatSuhu(item.suhuTerendah) : "-"}</td>
+                        <td style="text-align:center;">${item.suhuTertinggi !== null ? formatSuhu(item.suhuTertinggi) : "-"}</td>
+                        <td>${formatWaktu(item.waktuTerakhir)}</td>
+                    </tr>
+                `).join("") || `<tr><td colspan="7" style="text-align:center;">Belum ada unit pendingin terdaftar</td></tr>`;
+
+                const chartsHtml = items.map(item => `
+                    <div class="print-chart-box">
+                        <div style="font-size:8.5pt; font-weight:800; color:${item.color.hexText}; margin-bottom:4px;">
+                            ${esc(item.nama)} &mdash; ${esc(item.jenis)}
+                        </div>
+                        ${buatSvgGrafikSingle(item)}
+                        <div style="font-size:7.5pt; color:#475569; display:flex; justify-content:space-between; margin-top:4px;">
+                            <span>Terendah: <b>${item.suhuTerendah !== null ? formatSuhu(item.suhuTerendah) : "-"}</b></span>
+                            <span>Tertinggi: <b>${item.suhuTertinggi !== null ? formatSuhu(item.suhuTertinggi) : "-"}</b></span>
+                        </div>
+                    </div>
+                `).join("");
+
+                printEl.innerHTML = `
+                    ${buatPrintHeaderHTML("Laporan Dashboard Pantauan Suhu & Grafik", `Unit: <b>${esc(selectedUnit || "Semua Unit Terdaftar")}</b>`)}
+
+                    <div style="font-size:9pt; font-weight:800; color:#0f172a; margin-bottom:6px; text-transform:uppercase;">
+                        A. Pantauan Suhu Unit Terdaftar
+                    </div>
+                    <div class="print-cards-grid">${cardsHtml}</div>
+
+                    <table class="print-table">
+                        <thead>
+                            <tr>
+                                <th style="width:6%; text-align:center;">No</th>
+                                <th style="width:17%;">Unit</th>
+                                <th style="width:18%;">Jenis Pendingin</th>
+                                <th style="width:14%; text-align:center;">Suhu Terakhir</th>
+                                <th style="width:13%; text-align:center;">Terendah</th>
+                                <th style="width:13%; text-align:center;">Tertinggi</th>
+                                <th style="width:19%;">Waktu Terakhir</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+
+                    <div style="font-size:9pt; font-weight:800; color:#0f172a; margin-bottom:6px; text-transform:uppercase;">
+                        B. Grafik Suhu Tiap Jenis Pendingin
+                    </div>
+                    <div class="print-charts-grid">${chartsHtml}</div>
+                `;
+            } else if (menuCetak === "laporan-petugas") {
+                const logs = getFilteredLogs();
+                const unitFilter = document.getElementById("filter-log-unit")?.value || "";
+                const tanggalFilter = document.getElementById("filter-log-tanggal")?.value || "";
+                const infoTgl = tanggalFilter ? ` | Tanggal: <b>${esc(formatTanggalLengkap(tanggalFilter))}</b>` : "";
+
+                const logRows = logs.map((l, idx) => {
+                    const fotoTag = l.foto
+                        ? `<img src="${esc(l.foto)}" style="width:32px;height:32px;object-fit:cover;border-radius:9999px;border:1px solid #cbd5e1;display:block;margin:0 auto;">`
+                        : `-`;
+                    return `
+                        <tr>
+                            <td style="text-align:center;">${idx + 1}</td>
+                            <td>${formatWaktu(l.waktu)}</td>
+                            <td><b>${esc(l.petugas || "-")}</b></td>
+                            <td><b>${esc(getLogUnitName(l))}</b><br><small>${esc(getLogJenisName(l))}</small></td>
+                            <td style="text-align:center; font-weight:700;">${formatSuhu(l.suhu)}</td>
+                            <td style="text-align:center;">${fotoTag}</td>
+                        </tr>
+                    `;
+                }).join("") || `<tr><td colspan="6" style="text-align:center;">Tidak ada laporan suhu</td></tr>`;
+
+                printEl.innerHTML = `
+                    ${buatPrintHeaderHTML("Laporan Petugas Pantauan Suhu", `Unit: <b>${esc(unitFilter || "Semua Unit")}</b>${infoTgl}`)}
+
+                    <table class="print-table">
+                        <thead>
+                            <tr>
+                                <th style="width:7%; text-align:center;">No</th>
+                                <th style="width:20%;">Waktu Pantau</th>
+                                <th style="width:20%;">Nama Petugas</th>
+                                <th style="width:28%;">Unit &amp; Jenis Pendingin</th>
+                                <th style="width:12%; text-align:center;">Suhu</th>
+                                <th style="width:13%; text-align:center;">Foto</th>
+                            </tr>
+                        </thead>
+                        <tbody>${logRows}</tbody>
+                    </table>
+                `;
+            } else if (menuCetak === "petugas-dan-unit") {
+                const groups = getPetugasGroupedByUnit();
+                const registeredUnits = getRegisteredUnits();
+                const uniqueUnits = getUniqueUnitNames();
+                const totalPetugasTerdaftar = groups.reduce((acc, g) => acc + g.petugas.length, 0);
+
+                let ptgRows = "";
+                let no = 1;
+                groups.forEach(grp => {
+                    const jenisSummary = grp.jenisList.length > 0 ? grp.jenisList.join(", ") : "-";
+                    ptgRows += `
+                        <tr style="background:#f1f5f9;">
+                            <td colspan="4" style="font-weight:800; color:#0f172a;">
+                                UNIT: ${esc(grp.unitNama)} (${grp.petugas.length} Petugas) &mdash; Jenis Pendingin: ${esc(jenisSummary)}
+                            </td>
+                        </tr>
+                    `;
+                    if (grp.petugas.length === 0) {
+                        ptgRows += `<tr><td colspan="4" style="text-align:center; color:#64748b;">Belum ada petugas pada unit ini</td></tr>`;
+                    } else {
+                        grp.petugas.forEach(p => {
+                            const jenisHtml = grp.jenisList.length > 0
+                                ? grp.jenisList.map((j, i) => `<div>${i + 1}. ${esc(j)}</div>`).join("")
+                                : "-";
+                            ptgRows += `
+                                <tr>
+                                    <td style="text-align:center;">${no++}</td>
+                                    <td><b>${esc(p.nama)}</b></td>
+                                    <td style="font-weight:700; color:${grp.color.hexText};">${esc(grp.unitNama)}</td>
+                                    <td>${jenisHtml}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                });
+
+                if (!ptgRows) {
+                    ptgRows = `<tr><td colspan="4" style="text-align:center;">Belum ada data petugas</td></tr>`;
+                }
+
+                printEl.innerHTML = `
+                    ${buatPrintHeaderHTML("Daftar Petugas dan Unit Pendingin (Dikelompokkan per Unit)", `Total Petugas: <b>${totalPetugasTerdaftar} Orang</b>`)}
+
+                    <div class="print-info-box">
+                        <div><span style="color:#64748b;">Total Petugas:</span><br><b>${totalPetugasTerdaftar} Petugas</b></div>
+                        <div><span style="color:#64748b;">Jumlah Unit:</span><br><b>${uniqueUnits.length} Unit</b></div>
+                        <div><span style="color:#64748b;">Total Mesin Pendingin:</span><br><b>${registeredUnits.length} Mesin</b></div>
+                    </div>
+
+                    <table class="print-table">
+                        <thead>
+                            <tr>
+                                <th style="width:8%; text-align:center;">No</th>
+                                <th style="width:30%;">Nama Petugas</th>
+                                <th style="width:25%;">Unit</th>
+                                <th style="width:37%;">Jenis Pendingin</th>
+                            </tr>
+                        </thead>
+                        <tbody>${ptgRows}</tbody>
+                    </table>
+                `;
+            }
+
+            setTimeout(() => window.print(), 150);
+        }
+
+        // ==================== INISIALISASI ====================
+        window.addEventListener("DOMContentLoaded", () => {
+            sidebarTerbuka = false; // Selalu tertutup saat dibuka di laptop maupun HP
+            terapkanStateSidebar();
+            pilihMenu("dashboard");
+            terapkanDropdownDashboard();
+            terapkanStateFormPetugasUnit();
+            aktifkanSync();
+        });
+    </script>
+</body>
+</html>
